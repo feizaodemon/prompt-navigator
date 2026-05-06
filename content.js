@@ -12,6 +12,7 @@
   let root = null;
   let list = null;
   let emptyState = null;
+  let searchInput = null;
   let observer = null;
   let updateTimer = null;
   let lastRenderedPromptCount = null;
@@ -57,6 +58,14 @@
     title.className = "acn-title";
     title.textContent = "Prompt Navigator";
 
+    const refreshButton = document.createElement("button");
+    refreshButton.className = "acn-refresh";
+    refreshButton.type = "button";
+    refreshButton.title = "手动刷新 prompt";
+    refreshButton.setAttribute("aria-label", "手动刷新 Prompt Navigator");
+    refreshButton.textContent = "刷新";
+    refreshButton.addEventListener("click", () => renderPromptList(false));
+
     const toggleButton = document.createElement("button");
     toggleButton.className = "acn-toggle";
     toggleButton.type = "button";
@@ -73,6 +82,18 @@
     meta.className = "acn-meta";
     meta.textContent = activeAdapter.name;
 
+    const searchWrap = document.createElement("div");
+    searchWrap.className = "acn-search";
+
+    searchInput = document.createElement("input");
+    searchInput.className = "acn-search-input";
+    searchInput.type = "search";
+    searchInput.placeholder = "搜索 prompt";
+    searchInput.setAttribute("aria-label", "搜索 prompt");
+    searchInput.addEventListener("input", () => renderPromptList(false));
+
+    searchWrap.append(searchInput);
+
     list = document.createElement("div");
     list.className = "acn-list";
 
@@ -80,8 +101,8 @@
     emptyState.className = "acn-empty";
     emptyState.textContent = "暂无可用 prompt";
 
-    header.append(title, toggleButton);
-    root.append(header, meta, list, emptyState);
+    header.append(title, refreshButton, toggleButton);
+    root.append(header, meta, searchWrap, list, emptyState);
     document.documentElement.appendChild(root);
   }
 
@@ -96,25 +117,29 @@
 
   function scheduleUpdate() {
     window.clearTimeout(updateTimer);
-    updateTimer = window.setTimeout(renderPromptList, UPDATE_DELAY_MS);
+    updateTimer = window.setTimeout(() => renderPromptList(true), UPDATE_DELAY_MS);
   }
 
-  function renderPromptList() {
+  function renderPromptList(allowAutoScroll) {
     if (!activeAdapter || !list) {
       return;
     }
 
     const messages = activeAdapter.getUserMessages();
+    const query = searchInput ? searchInput.value : "";
+    const filteredMessages = filterMessagesByQuery(messages, query);
     const previousScrollTop = list.scrollTop;
     const shouldScrollToLatest =
+      allowAutoScroll &&
       lastRenderedPromptCount !== null &&
       messages.length > lastRenderedPromptCount &&
       isPromptListNearBottom(list);
 
     list.textContent = "";
-    emptyState.hidden = messages.length > 0;
+    emptyState.hidden = filteredMessages.length > 0;
+    emptyState.textContent = messages.length > 0 ? "没有匹配的 prompt" : "暂无可用 prompt";
 
-    messages.forEach((message, index) => {
+    filteredMessages.forEach(({ message, index }) => {
       const item = document.createElement("button");
       item.className = "acn-item";
       item.type = "button";
@@ -207,6 +232,21 @@
     }
 
     return `${text.slice(0, MAX_PREVIEW_LENGTH)}...`;
+  }
+
+  function filterMessagesByQuery(messages, query) {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    if (!normalizedQuery) {
+      return messages.map((message, index) => ({ message, index }));
+    }
+
+    return messages
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) => {
+        const text = message.text.toLocaleLowerCase();
+        const preview = previewText(message.text).toLocaleLowerCase();
+        return text.includes(normalizedQuery) || preview.includes(normalizedQuery);
+      });
   }
 
   function isPromptListNearBottom(element) {
