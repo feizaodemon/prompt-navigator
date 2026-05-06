@@ -10,7 +10,8 @@
 
 ## 开发范围
 
-- 当前阶段只实现 V1：Multi-platform Prompt Timeline Navigator。
+- 当前阶段只实现 V1：ChatGPT Prompt Timeline Navigator。
+- DeepSeek support 暂缓：DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全部存在于 DOM 中。
 - 不要提前实现 V2/V3/V4/V5/V6。
 - 不要实现 folder、prompt vault、export、sync、账号系统或后端服务。
 - 不要复制 Gemini Voyager 的源码，只参考其产品结构和功能分层思路。
@@ -18,14 +19,14 @@
 ## 技术要求
 
 - 使用 Manifest V3。
-- 只支持：
+- 当前只支持：
   - https://chatgpt.com/*
-  - https://chat.deepseek.com/*
+- 暂时不要在 manifest 中启用 https://chat.deepseek.com/*
 - 不使用外部依赖。
 - 不使用后端服务。
 - 不上传任何聊天内容。
 - 不使用远程脚本或外部分析工具。
-- 代码结构中需要体现平台 adapter 思想，方便以后适配更多 AI 聊天平台。
+- 代码结构中需要体现平台 adapter 思想，当前只启用 ChatGPT adapter，方便以后单独恢复 DeepSeek 或适配更多 AI 聊天平台。
 
 ## 回复要求
 

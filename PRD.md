@@ -3,7 +3,8 @@
 它已经包含：
 
 * 最终目标：类似 Gemini Voyager 的用途
-* 当前 V1：只实现 ChatGPT + DeepSeek 的 prompt timeline
+* 当前 V1：只实现 ChatGPT 的 prompt timeline
+* DeepSeek support 暂缓：DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全部存在于 DOM 中
 * 多平台适配器思想
 * 中文回复要求
 * 不复制 Gemini Voyager 源码
@@ -37,10 +38,13 @@ PRD.md
 - 按项目或主题组织 AI 对话
 - 在多个 AI 聊天平台中获得尽量一致的长对话导航体验
 
-当前优先支持的平台：
+当前优先稳定支持的平台：
 
 - ChatGPT
-- DeepSeek
+
+暂缓支持的平台：
+
+- DeepSeek：页面存在懒加载 / 虚拟滚动问题，后续单独开发 adapter
 
 长期可扩展支持的平台：
 
@@ -142,9 +146,12 @@ Gemini Voyager 的核心产品结构可以理解为：
 
 目标：让扩展可以适配多个 AI 聊天网页。
 
-优先支持：
+当前优先稳定支持：
 
 - ChatGPT
+
+暂缓支持：
+
 - DeepSeek
 
 后续可能支持：
@@ -185,18 +192,23 @@ Gemini Voyager 的核心产品结构可以理解为：
 V1 需要优先支持：
 
 - ChatGPT：`https://chatgpt.com/*`
-- DeepSeek：`https://chat.deepseek.com/*`
+
+DeepSeek support 暂缓：
+
+- 暂不在 manifest 中启用 `https://chat.deepseek.com/*`
+- 暂缓原因：DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全部存在于当前 DOM 中
+- 后续在 ChatGPT 版本稳定后，单独开发 DeepSeek adapter
 
 V1 需要完成以下目标：
 
-- 在 ChatGPT 和 DeepSeek 对话页面右侧显示一个 prompt 导航栏
+- 在 ChatGPT 对话页面右侧显示一个 prompt 导航栏
 - 自动扫描当前页面中所有用户发送的消息
 - 按顺序显示 Prompt 1、Prompt 2、Prompt 3 等编号
 - 每条记录显示 prompt 的前 50 个字符作为预览
 - 点击某条 prompt 后，页面平滑滚动到对应消息位置
 - 当用户继续发送新 prompt 后，导航栏自动更新
 - 所有处理都在本地浏览器中完成，不上传任何聊天内容
-- 代码结构中需要体现平台适配器思想，方便后续继续适配 Gemini、Claude 等平台
+- 代码结构中需要体现平台适配器思想，当前只启用 ChatGPT adapter，方便后续单独恢复 DeepSeek 或继续适配 Gemini、Claude 等平台
 
 ---
 
@@ -281,19 +293,15 @@ Prompt 12
 
 ## 7.2 打开 AI 聊天网页
 
-用户访问已支持的平台：
+用户访问当前已支持的平台：
 
 ```text
 https://chatgpt.com/
 ```
 
-或：
-
-```text
-https://chat.deepseek.com/
-```
-
 然后用户打开任意一个已有对话或新对话。
+
+DeepSeek 当前暂缓支持，访问 `https://chat.deepseek.com/` 时扩展不应注入 Prompt Navigator。
 
 ## 7.3 自动生成 Prompt 导航栏
 
@@ -340,8 +348,9 @@ Prompt 3：这个报错是什么意思...
 
 ```text
 https://chatgpt.com/*
-https://chat.deepseek.com/*
 ```
+
+当前不允许在 manifest 中启用 `https://chat.deepseek.com/*`。DeepSeek support 暂缓，后续单独开发 adapter。
 
 ---
 
@@ -385,10 +394,11 @@ Prompt 3：preview text...
 
 扩展需要自动识别当前已支持平台页面中的用户消息。
 
-V1 支持平台：
+V1 当前稳定支持平台：
 
 * ChatGPT
-* DeepSeek
+
+DeepSeek 暂缓，不作为当前 V1 验收范围。
 
 要求：
 
@@ -484,7 +494,7 @@ element.scrollIntoView({
 
 ## 8.8 多平台适配器设计
 
-由于 ChatGPT 和 DeepSeek 的页面结构不同，本项目需要采用平台适配器设计。
+由于不同 AI 聊天网页的页面结构不同，本项目需要采用平台适配器设计。
 
 核心逻辑应尽量保持通用：
 
@@ -501,8 +511,7 @@ element.scrollIntoView({
 
 ```text
 platformAdapters = {
-  chatgpt: {...},
-  deepseek: {...}
+  chatgpt: {...}
 }
 ```
 
@@ -526,7 +535,7 @@ ChatGPT adapter 示例：
 }
 ```
 
-DeepSeek adapter 示例：
+DeepSeek adapter 后续示例：
 
 ```js
 {
@@ -536,7 +545,7 @@ DeepSeek adapter 示例：
 }
 ```
 
-V1 阶段可以先不拆分成多个文件，但代码中必须保留清晰的平台适配结构，方便后续扩展。
+V1 阶段可以先不拆分成多个文件，但代码中必须保留清晰的平台适配结构。当前只启用 ChatGPT adapter；DeepSeek adapter 后续单独恢复。
 
 ---
 
@@ -560,7 +569,6 @@ V1 必须满足：
 
 ```text
 https://chatgpt.com/*
-https://chat.deepseek.com/*
 ```
 
 ---
@@ -706,7 +714,8 @@ ai-conversation-navigator/
 支持平台：
 
 * ChatGPT
-* DeepSeek
+
+DeepSeek 暂缓，后续单独开发 adapter。
 
 功能：
 
@@ -807,9 +816,9 @@ ai-conversation-navigator/
 
 | 功能              | ChatGPT | DeepSeek |
 | --------------- | ------- | -------- |
-| Prompt Timeline | V1 支持   | V1 支持    |
-| 点击跳转            | V1 支持   | V1 支持    |
-| 自动更新            | V1 支持   | V1 支持    |
+| Prompt Timeline | V1 支持   | 暂缓       |
+| 点击跳转            | V1 支持   | 暂缓       |
+| 自动更新            | V1 支持   | 暂缓       |
 | 搜索 prompt       | 后续支持    | 后续支持     |
 | Pin prompt      | 后续支持    | 后续支持     |
 | 导出对话            | 后续评估    | 后续评估     |
@@ -825,8 +834,8 @@ ai-conversation-navigator/
 V1 完成后，需要满足以下条件：
 
 * 打开 `https://chatgpt.com/*` 对话页面后，右侧出现 prompt 导航栏
-* 打开 `https://chat.deepseek.com/*` 对话页面后，右侧出现 prompt 导航栏
-* 两个平台都能列出当前页面中所有用户 prompt
+* 扩展不匹配 `https://chat.deepseek.com/*`
+* ChatGPT 能列出当前页面中所有用户 prompt
 * 不应把 AI 回答误识别为用户 prompt
 * 每个 prompt 编号正确
 * 每个 prompt 显示前 50 个字符
@@ -846,7 +855,7 @@ V1 完成后，需要满足以下条件：
 
 ## 14.1 页面 DOM 变化风险
 
-ChatGPT 和 DeepSeek 的网页结构可能会更新。
+ChatGPT 的网页结构可能会更新。DeepSeek 后续恢复时也需要单独评估 DOM 和历史消息加载机制。
 
 如果平台更新 DOM，prompt 识别逻辑可能失效。
 
@@ -863,7 +872,8 @@ ChatGPT 和 DeepSeek 的网页结构可能会更新。
 
 应对方式：
 
-* V1 只支持 ChatGPT 和 DeepSeek
+* V1 当前只稳定支持 ChatGPT
+* DeepSeek 因懒加载 / 虚拟滚动暂缓，不在当前验收范围
 * 不要在 V1 中适配过多平台
 * 保持通用 UI 和平台 adapter 分离
 
@@ -898,7 +908,7 @@ ChatGPT 和 DeepSeek 的网页结构可能会更新。
 原则：
 
 1. 先实现最小可用版本
-2. 先跑通 ChatGPT + DeepSeek 的 prompt timeline
+2. 先跑通并稳定 ChatGPT 的 prompt timeline
 3. 优先保证本地可运行
 4. 优先保证不上传数据
 5. 优先保证代码可读、可维护
@@ -912,12 +922,12 @@ ChatGPT 和 DeepSeek 的网页结构可能会更新。
 2. 实现浏览器扩展基本加载
 3. 注入右侧侧边栏
 4. 实现 ChatGPT prompt 识别
-5. 实现 DeepSeek prompt 识别
-6. 实现点击跳转
-7. 实现 MutationObserver 自动更新
-8. 实现折叠 / 展开
-9. 手动测试两个平台
-10. 再考虑 V2 搜索与 pin 功能
+5. 实现点击跳转
+6. 实现 MutationObserver 自动更新
+7. 实现折叠 / 展开
+8. 修复 ChatGPT 侧边栏列表新 prompt 自动滚动体验
+9. 手动测试 ChatGPT
+10. ChatGPT 版本稳定后，再单独研究 DeepSeek adapter
 
 ---
 
@@ -969,7 +979,7 @@ Codex 在本项目中的所有回复都必须使用中文。
 
 ## 18. 第一轮开发任务
 
-请根据本 PRD 实现 V1：Multi-platform Prompt Timeline Navigator。
+请根据本 PRD 实现 V1：ChatGPT Prompt Timeline Navigator。
 
 具体要求：
 
@@ -981,11 +991,10 @@ Codex 在本项目中的所有回复都必须使用中文。
 6. 只在以下页面运行：
 
    * `https://chatgpt.com/*`
-   * `https://chat.deepseek.com/*`
 7. 在页面右侧注入一个可折叠侧边栏
 8. 自动识别当前页面中的用户 prompt
 9. 支持 ChatGPT 用户 prompt 识别
-10. 支持 DeepSeek 用户 prompt 识别
+10. 暂缓 DeepSeek 用户 prompt 识别
 11. 显示 Prompt 1、Prompt 2、Prompt 3 等编号
 12. 显示每条 prompt 的前 50 个字符
 13. 点击 prompt 后平滑滚动到对应消息
@@ -1017,7 +1026,7 @@ Codex 在本项目中的所有回复都必须使用中文。
 
 但是当前阶段请严格只实现 V1：
 
-- ChatGPT + DeepSeek prompt timeline
+- ChatGPT prompt timeline
 - 右侧侧边栏
 - 点击 prompt 后跳转到对应消息
 - 新 prompt 自动更新
@@ -1033,14 +1042,13 @@ Codex 在本项目中的所有回复都必须使用中文。
 1. 使用 Manifest V3。
 2. 支持：
    - https://chatgpt.com/*
-   - https://chat.deepseek.com/*
 3. 在页面右侧注入一个可折叠侧边栏。
 4. 自动识别当前页面中的用户 prompt。
 5. 按顺序显示 Prompt 1、Prompt 2、Prompt 3。
 6. 每个 prompt 显示前 50 个字符作为预览。
 7. 点击某个 prompt 后，平滑滚动到对应用户消息。
 8. 使用 MutationObserver 监听页面变化并自动更新 prompt 列表。
-9. 代码中要体现平台适配器思想，例如 ChatGPT adapter 和 DeepSeek adapter，方便以后继续适配 Gemini、Claude 等平台。
+9. 代码中要体现平台适配器思想，当前只启用 ChatGPT adapter，方便以后单独恢复 DeepSeek 或继续适配 Gemini、Claude 等平台。
 10. 不要上传任何聊天内容。
 11. 不要复制 Gemini Voyager 的源码。
 12. 不要提前实现 folder、prompt vault、export、sync 等后续功能。
@@ -1062,7 +1070,7 @@ Codex 在本项目中的所有回复都必须使用中文。
 1. 创建或修改了哪些文件。
 2. 每个文件的作用是什么。
 3. 如何在 Chrome 或 Edge 中加载本地扩展。
-4. 如何分别在 ChatGPT 和 DeepSeek 中测试。
+4. 如何在 ChatGPT 中测试，以及如何确认 DeepSeek 暂未启用。
 5. 当前版本有哪些限制。
 ```
 
@@ -1077,7 +1085,7 @@ Codex 生成的 `README.md` 至少应包含以下内容：
 
 ## 项目简介
 
-这是一个面向 ChatGPT 和 DeepSeek 的浏览器扩展，用于在长 AI 对话中快速定位用户 prompt。
+这是一个面向 ChatGPT 的浏览器扩展，用于在长 AI 对话中快速定位用户 prompt。DeepSeek support 暂缓。
 
 ## 当前功能
 
@@ -1085,7 +1093,7 @@ Codex 生成的 `README.md` 至少应包含以下内容：
 - 点击跳转
 - 自动更新
 - 支持 ChatGPT
-- 支持 DeepSeek
+- DeepSeek 暂缓，后续单独开发 adapter
 - 本地运行，不上传数据
 
 ## 安装方式
@@ -1102,7 +1110,7 @@ Codex 生成的 `README.md` 至少应包含以下内容：
 2. 检查右侧是否出现 Prompt Navigator
 3. 检查是否列出所有用户 prompt
 4. 点击某个 prompt，检查是否跳转到对应位置
-5. 打开 DeepSeek 对话页面，重复以上测试
+5. 打开 DeepSeek 页面，确认扩展不会注入 Prompt Navigator
 
 ## 隐私说明
 
@@ -1112,7 +1120,8 @@ Codex 生成的 `README.md` 至少应包含以下内容：
 ## 当前限制
 
 - 页面 DOM 变化可能导致识别失效
-- V1 只支持 ChatGPT 和 DeepSeek
+- V1 当前只稳定支持 ChatGPT
+- DeepSeek 因懒加载 / 虚拟滚动暂缓
 - V1 不支持搜索、pin、导出、文件夹管理
 ```
 
@@ -1125,22 +1134,23 @@ Codex 生成的 `README.md` 至少应包含以下内容：
 正确策略是：
 
 ```text
-第一步：实现 ChatGPT + DeepSeek 的 Prompt Timeline
-第二步：修复两个平台的 DOM 识别稳定性
+第一步：实现并稳定 ChatGPT 的 Prompt Timeline
+第二步：修复 ChatGPT 的 DOM 识别和侧边栏 UX 问题
 第三步：增加搜索和 pin
 第四步：增加 Markdown / JSON 导出
 第五步：增加 Prompt Vault
 第六步：增加文件夹管理
 第七步：考虑备份与可选同步
+第八步：单独研究 DeepSeek 的历史消息加载机制并恢复 DeepSeek adapter
 ```
 
 当前最重要的是：
 
 ```text
-V1 = ChatGPT + DeepSeek 的 Prompt Timeline Navigator
+V1 = ChatGPT 的 Prompt Timeline Navigator
 ```
 
-只要 V1 稳定可用，后续功能可以逐步迭代。
+只要 ChatGPT V1 稳定可用，后续功能可以逐步迭代。DeepSeek 应作为独立 adapter 单独开发，不应影响 ChatGPT 主线。
 
 ````
 

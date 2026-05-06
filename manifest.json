@@ -2,12 +2,11 @@
   "manifest_version": 3,
   "name": "AI Conversation Navigator",
   "version": "0.1.0",
-  "description": "在 ChatGPT 和 DeepSeek 页面中生成本地 prompt 时间轴导航栏。",
+  "description": "在 ChatGPT 页面中生成本地 prompt 时间轴导航栏。",
   "content_scripts": [
     {
       "matches": [
-        "https://chatgpt.com/*",
-        "https://chat.deepseek.com/*"
+        "https://chatgpt.com/*"
       ],
       "js": [
         "content.js"
