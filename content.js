@@ -6,6 +6,7 @@
   const MAX_PREVIEW_LENGTH = 50;
   const UPDATE_DELAY_MS = 300;
   const HIGHLIGHT_DELAY_MS = 1600;
+  const PROMPT_LIST_BOTTOM_THRESHOLD_PX = 120;
 
   let activeAdapter = null;
   let root = null;
@@ -13,6 +14,7 @@
   let emptyState = null;
   let observer = null;
   let updateTimer = null;
+  let lastRenderedPromptCount = null;
   let collapsed = false;
 
   const platformAdapters = {
@@ -149,6 +151,12 @@
     }
 
     const messages = activeAdapter.getUserMessages();
+    const previousScrollTop = list.scrollTop;
+    const shouldScrollToLatest =
+      lastRenderedPromptCount !== null &&
+      messages.length > lastRenderedPromptCount &&
+      isPromptListNearBottom(list);
+
     list.textContent = "";
     emptyState.hidden = messages.length > 0;
 
@@ -170,6 +178,14 @@
       item.addEventListener("click", () => scrollToMessage(message.element));
       list.appendChild(item);
     });
+
+    if (shouldScrollToLatest) {
+      list.scrollTop = list.scrollHeight;
+    } else {
+      list.scrollTop = previousScrollTop;
+    }
+
+    lastRenderedPromptCount = messages.length;
   }
 
   function scrollToMessage(element) {
@@ -279,6 +295,11 @@
     }
 
     return `${text.slice(0, MAX_PREVIEW_LENGTH)}...`;
+  }
+
+  function isPromptListNearBottom(element) {
+    const distanceToBottom = element.scrollHeight - element.clientHeight - element.scrollTop;
+    return distanceToBottom <= PROMPT_LIST_BOTTOM_THRESHOLD_PX;
   }
 
   function getStableElementId(element, platformKey, index, text) {
