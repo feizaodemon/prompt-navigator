@@ -3,6 +3,7 @@
 
   const NAVIGATOR_ID = "ai-conversation-navigator";
   const HIGHLIGHT_CLASS = "ai-conversation-navigator-target";
+  const PINNED_STORAGE_KEY = "aiConversationNavigatorPinnedPrompts";
   const MAX_PREVIEW_LENGTH = 50;
   const UPDATE_DELAY_MS = 300;
   const HIGHLIGHT_DELAY_MS = 1600;
@@ -11,11 +12,15 @@
   let activeAdapter = null;
   let root = null;
   let list = null;
+  let pinnedSection = null;
+  let pinnedList = null;
   let emptyState = null;
   let searchInput = null;
   let observer = null;
   let updateTimer = null;
   let lastRenderedPromptCount = null;
+  let pinnedStore = {};
+  let activePromptKey = null;
   let collapsed = false;
 
   const platformAdapters = {
@@ -42,8 +47,10 @@
     }
 
     createSidebar();
-    scheduleUpdate();
-    startObserver();
+    loadPinnedPrompts().then(() => {
+      scheduleUpdate();
+      startObserver();
+    });
   }
 
   function createSidebar() {
@@ -94,6 +101,19 @@
 
     searchWrap.append(searchInput);
 
+    pinnedSection = document.createElement("section");
+    pinnedSection.className = "acn-pinned-section";
+    pinnedSection.hidden = true;
+
+    const pinnedTitle = document.createElement("div");
+    pinnedTitle.className = "acn-section-title";
+    pinnedTitle.textContent = "Pinned";
+
+    pinnedList = document.createElement("div");
+    pinnedList.className = "acn-pinned-list";
+
+    pinnedSection.append(pinnedTitle, pinnedList);
+
     list = document.createElement("div");
     list.className = "acn-list";
 
@@ -102,7 +122,7 @@
     emptyState.textContent = "暂无可用 prompt";
 
     header.append(title, refreshButton, toggleButton);
-    root.append(header, meta, searchWrap, list, emptyState);
+    root.append(header, meta, searchWrap, pinnedSection, list, emptyState);
     document.documentElement.appendChild(root);
   }
 
@@ -128,6 +148,9 @@
     const messages = activeAdapter.getUserMessages();
     const query = searchInput ? searchInput.value : "";
     const filteredMessages = filterMessagesByQuery(messages, query);
+    const pinnedRecords = getCurrentPinnedRecords();
+    const pinnedKeys = new Set(pinnedRecords.map((record) => record.promptKey));
+    const messagesByKey = mapMessagesByPromptKey(messages);
     const previousScrollTop = list.scrollTop;
     const shouldScrollToLatest =
       allowAutoScroll &&
@@ -136,25 +159,19 @@
       isPromptListNearBottom(list);
 
     list.textContent = "";
+    renderPinnedPrompts(pinnedRecords, messagesByKey);
     emptyState.hidden = filteredMessages.length > 0;
     emptyState.textContent = messages.length > 0 ? "没有匹配的 prompt" : "暂无可用 prompt";
 
     filteredMessages.forEach(({ message, index }) => {
-      const item = document.createElement("button");
-      item.className = "acn-item";
-      item.type = "button";
-      item.dataset.promptId = message.id;
-
-      const number = document.createElement("span");
-      number.className = "acn-item-number";
-      number.textContent = `Prompt ${index + 1}`;
-
-      const preview = document.createElement("span");
-      preview.className = "acn-item-preview";
-      preview.textContent = previewText(message.text);
-
-      item.append(number, preview);
-      item.addEventListener("click", () => scrollToMessage(message.element));
+      const promptKey = getPromptKey(message, index);
+      const item = createPromptItem({
+        message,
+        promptKey,
+        promptNumber: index + 1,
+        pinned: pinnedKeys.has(promptKey),
+        showPinButton: true
+      });
       list.appendChild(item);
     });
 
@@ -167,11 +184,92 @@
     lastRenderedPromptCount = messages.length;
   }
 
-  function scrollToMessage(element) {
+  function renderPinnedPrompts(pinnedRecords, messagesByKey) {
+    if (!pinnedSection || !pinnedList) {
+      return;
+    }
+
+    pinnedList.textContent = "";
+    pinnedSection.hidden = pinnedRecords.length === 0;
+
+    pinnedRecords.forEach((record) => {
+      const matchedMessage = messagesByKey.get(record.promptKey);
+      const item = createPromptItem({
+        message: matchedMessage ? matchedMessage.message : null,
+        promptKey: record.promptKey,
+        promptNumber: record.promptNumber,
+        preview: record.promptPreview,
+        pinned: true,
+        showPinButton: true
+      });
+      pinnedList.appendChild(item);
+    });
+  }
+
+  function createPromptItem({ message, promptKey, promptNumber, preview, pinned, showPinButton }) {
+    const item = document.createElement("div");
+    item.className = "acn-item";
+    item.dataset.promptKey = promptKey;
+    item.setAttribute("role", "button");
+    item.tabIndex = 0;
+    item.classList.toggle("is-pinned", pinned);
+    item.classList.toggle("is-active", activePromptKey === promptKey);
+
+    const content = document.createElement("div");
+    content.className = "acn-item-content";
+
+    const number = document.createElement("span");
+    number.className = "acn-item-number";
+    number.textContent = `Prompt ${promptNumber}`;
+
+    const previewNode = document.createElement("span");
+    previewNode.className = "acn-item-preview";
+    previewNode.textContent = preview || previewText(message ? message.text : "");
+
+    content.append(number, previewNode);
+    item.append(content);
+
+    if (showPinButton) {
+      const pinButton = document.createElement("button");
+      pinButton.className = "acn-pin-button";
+      pinButton.type = "button";
+      pinButton.title = pinned ? "取消固定 prompt" : "固定 prompt";
+      pinButton.setAttribute("aria-label", pinned ? `取消固定 Prompt ${promptNumber}` : `固定 Prompt ${promptNumber}`);
+      pinButton.setAttribute("aria-pressed", pinned ? "true" : "false");
+      pinButton.textContent = pinned ? "★" : "☆";
+      pinButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        togglePinnedPrompt(message, promptKey, promptNumber, previewNode.textContent);
+      });
+      item.append(pinButton);
+    }
+
+    item.addEventListener("click", () => {
+      if (message) {
+        scrollToMessage(message.element, promptKey);
+      } else {
+        setActivePrompt(promptKey);
+        scheduleUpdate();
+      }
+    });
+
+    item.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        item.click();
+      }
+    });
+
+    return item;
+  }
+
+  function scrollToMessage(element, promptKey) {
     if (!element || !element.isConnected) {
       scheduleUpdate();
       return;
     }
+
+    setActivePrompt(promptKey);
 
     element.scrollIntoView({
       behavior: "smooth",
@@ -182,6 +280,95 @@
     window.setTimeout(() => {
       element.classList.remove(HIGHLIGHT_CLASS);
     }, HIGHLIGHT_DELAY_MS);
+  }
+
+  function setActivePrompt(promptKey) {
+    activePromptKey = promptKey;
+
+    if (!root) {
+      return;
+    }
+
+    root.querySelectorAll(".acn-item").forEach((item) => {
+      item.classList.toggle("is-active", item.dataset.promptKey === promptKey);
+    });
+  }
+
+  function togglePinnedPrompt(message, promptKey, promptNumber, promptPreview) {
+    const conversationKey = getConversationKey();
+    const records = getCurrentPinnedRecords();
+    const nextRecords = records.filter((record) => record.promptKey !== promptKey);
+
+    if (nextRecords.length === records.length) {
+      const text = message ? message.text : promptPreview;
+      nextRecords.push({
+        conversationUrl: conversationKey,
+        promptKey,
+        promptHash: hashText(text),
+        promptPreview: previewText(text),
+        promptNumber
+      });
+    }
+
+    pinnedStore[conversationKey] = nextRecords;
+    savePinnedPrompts();
+    renderPromptList(false);
+  }
+
+  function loadPinnedPrompts() {
+    return new Promise((resolve) => {
+      const storage = getLocalStorageApi();
+      if (!storage) {
+        pinnedStore = {};
+        resolve();
+        return;
+      }
+
+      storage.get([PINNED_STORAGE_KEY], (result) => {
+        pinnedStore = result && result[PINNED_STORAGE_KEY] ? result[PINNED_STORAGE_KEY] : {};
+        resolve();
+      });
+    });
+  }
+
+  function savePinnedPrompts() {
+    const storage = getLocalStorageApi();
+    if (!storage) {
+      return;
+    }
+
+    storage.set({
+      [PINNED_STORAGE_KEY]: pinnedStore
+    });
+  }
+
+  function getLocalStorageApi() {
+    if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
+      return null;
+    }
+
+    return chrome.storage.local;
+  }
+
+  function getCurrentPinnedRecords() {
+    const records = pinnedStore[getConversationKey()];
+    return Array.isArray(records) ? records : [];
+  }
+
+  function mapMessagesByPromptKey(messages) {
+    const map = new Map();
+    messages.forEach((message, index) => {
+      map.set(getPromptKey(message, index), { message, index });
+    });
+    return map;
+  }
+
+  function getPromptKey(message, index) {
+    return `${getConversationKey()}::${index + 1}::${hashText(message.text)}`;
+  }
+
+  function getConversationKey() {
+    return `${location.origin}${location.pathname}`;
   }
 
   function normalizeMessages(elements, platformKey) {

@@ -118,8 +118,29 @@
   padding: 8px;
 }
 
+.acn-pinned-section {
+  flex: 0 0 auto;
+  max-height: 34%;
+  overflow: auto;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.acn-section-title {
+  padding: 0 4px 6px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.acn-pinned-list {
+  min-height: 0;
+}
+
 .acn-item {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   width: 100%;
   min-height: 58px;
   margin: 0 0 8px;
@@ -136,6 +157,41 @@
 .acn-item:hover {
   background: #f9fafb;
   border-color: rgba(37, 99, 235, 0.35);
+}
+
+.acn-item.is-active {
+  background: #eff6ff;
+  border-color: rgba(37, 99, 235, 0.62);
+  box-shadow: inset 3px 0 0 rgba(37, 99, 235, 0.8);
+}
+
+.acn-item-content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.acn-pin-button {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  color: #6b7280;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  line-height: 24px;
+  text-align: center;
+}
+
+.acn-pin-button:hover {
+  color: #1f2937;
+  background: #f3f4f6;
+}
+
+.acn-item.is-pinned .acn-pin-button {
+  color: #2563eb;
 }
 
 .acn-item-number,
@@ -163,6 +219,7 @@
 #ai-conversation-navigator.is-collapsed .acn-refresh,
 #ai-conversation-navigator.is-collapsed .acn-meta,
 #ai-conversation-navigator.is-collapsed .acn-search,
+#ai-conversation-navigator.is-collapsed .acn-pinned-section,
 #ai-conversation-navigator.is-collapsed .acn-list,
 #ai-conversation-navigator.is-collapsed .acn-empty {
   display: none;

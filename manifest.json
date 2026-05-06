@@ -3,6 +3,9 @@
   "name": "AI Conversation Navigator",
   "version": "0.1.0",
   "description": "在 ChatGPT 页面中生成本地 prompt 时间轴导航栏。",
+  "permissions": [
+    "storage"
+  ],
   "content_scripts": [
     {
       "matches": [
