@@ -38,7 +38,44 @@
   }
 
   function extractDeepSeekPrompts() {
-    return [];
+    const conversationContainers = uniqueElements([
+      ...document.querySelectorAll(".dad65929"),
+      ...document.querySelectorAll(".ds-virtual-list-visible-items")
+    ]).filter(isVisibleElement);
+
+    const candidates = uniqueElements(
+      conversationContainers.flatMap((container) => {
+        const userRows = [
+          ...container.querySelectorAll("._9663006"),
+          ...container.querySelectorAll(".ds-message.d29f3d7d"),
+          ...container.querySelectorAll(".d29f3d7d")
+        ];
+
+        return userRows
+          .map((row) => row.querySelector(".fbb737a4") || row)
+          .filter((element) => element instanceof HTMLElement);
+      })
+    );
+
+    console.log("[Prompt Navigator][DeepSeek] candidates:", candidates.length);
+    candidates.forEach((el) => {
+      const text = getMessageText(el);
+      console.log("[Prompt Navigator][DeepSeek] candidate", {
+        text,
+        tagName: el.tagName,
+        className: el.className,
+        rect: el.getBoundingClientRect(),
+        parentClassName: el.parentElement?.className
+      });
+    });
+
+    const prompts = normalizeMessages(
+      candidates.filter(isDeepSeekUserMessageElement),
+      "deepseek"
+    );
+
+    console.log("[Prompt Navigator][DeepSeek] final prompts:", prompts);
+    return prompts;
   }
 
   function init() {
@@ -85,7 +122,7 @@
 
     emptyState = document.createElement("div");
     emptyState.className = "acn-empty";
-    emptyState.textContent = activeAdapter.name === "DeepSeek" ? "暂未适配" : "暂无可用 prompt";
+    emptyState.textContent = "暂无可用 prompt";
 
     header.append(title, toggleButton);
     root.append(header, meta, list, emptyState);
@@ -188,6 +225,48 @@
 
     const rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
+  }
+
+  function isDeepSeekUserMessageElement(element) {
+    if (!isValidMessageElement(element)) {
+      return false;
+    }
+
+    if (element.closest("._4f9bf79, ._43c05b5, .e1675d8b, .ds-markdown")) {
+      return false;
+    }
+
+    const row = element.closest("._9663006, .ds-message.d29f3d7d, .d29f3d7d");
+    if (!row) {
+      return false;
+    }
+
+    if (!row.closest(".dad65929, .ds-virtual-list-visible-items")) {
+      return false;
+    }
+
+    return !isDeepSeekUiText(getMessageText(element));
+  }
+
+  function isVisibleElement(element) {
+    if (!(element instanceof HTMLElement)) {
+      return false;
+    }
+
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
+  function isDeepSeekUiText(text) {
+    const blockedTexts = new Set([
+      "快速模式",
+      "专家模式",
+      "深度思考",
+      "智能搜索",
+      "内容由 AI 生成，请仔细甄别"
+    ]);
+
+    return blockedTexts.has(text) || /^已思考/.test(text) || /^用时/.test(text);
   }
 
   function getMessageText(element) {
