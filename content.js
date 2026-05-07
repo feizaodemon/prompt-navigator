@@ -161,6 +161,7 @@
     compactTimeline = document.createElement("div");
     compactTimeline.className = "acn-compact-timeline";
     compactTimeline.setAttribute("aria-label", "Compact prompt timeline");
+    compactTimeline.addEventListener("click", handleCompactTimelineClick);
 
     emptyState = document.createElement("div");
     emptyState.className = "acn-empty";
@@ -394,6 +395,7 @@
     dot.className = "acn-compact-dot";
     dot.type = "button";
     dot.dataset.promptKey = prompt.id;
+    dot.dataset.promptId = prompt.id;
     dot.dataset.promptNumber = String(prompt.index);
     dot.dataset.promptPreview = prompt.preview;
     dot.classList.toggle("is-pinned", pinned);
@@ -403,9 +405,34 @@
     dot.addEventListener("mouseleave", hideCompactTooltip);
     dot.addEventListener("focus", () => showCompactTooltip(dot, prompt));
     dot.addEventListener("blur", hideCompactTooltip);
-    dot.addEventListener("click", () => handlePromptClick(prompt.id, "compact"));
+    dot.addEventListener("click", handleCompactDotClick);
 
     return dot;
+  }
+
+  function handleCompactDotClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const dot = event.currentTarget;
+    const promptId = dot.dataset.promptId;
+    debugNavigator("dot clicked", {
+      promptId,
+      promptIndex: dot.dataset.promptNumber,
+      promptPreview: dot.dataset.promptPreview
+    });
+    handlePromptClick(promptId, "compact");
+  }
+
+  function handleCompactTimelineClick(event) {
+    const dot = event.target.closest(".acn-compact-dot");
+    if (!dot || !compactTimeline || !compactTimeline.contains(dot)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    handlePromptClick(dot.dataset.promptId, "compact");
   }
 
   function showCompactTooltip(dot, prompt) {

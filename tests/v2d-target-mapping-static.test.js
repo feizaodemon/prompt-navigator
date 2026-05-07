@@ -17,7 +17,16 @@ assert(content.includes("function handlePromptClick(promptId"), "所有点击入
 assert(content.includes("findPromptById(promptId)"), "点击时应通过 promptId 从当前列表查找 prompt");
 assert(content.includes("refreshPrompts()"), "element 失效时应重新扫描当前 DOM");
 assert(content.includes('scrollToPrompt(prompt, source)'), "跳转应接收统一 prompt 对象");
-assert(content.includes('dot.addEventListener("click", () => handlePromptClick(prompt.id, "compact"))'), "compact dot 点击应绑定同一个 prompt.id");
+assert(content.includes("dot.dataset.promptId = prompt.id"), "compact dot 应写入稳定 data-prompt-id");
+assert(content.includes('dot.addEventListener("click", handleCompactDotClick)'), "compact dot 点击应绑定明确的 dot click handler");
+assert(content.includes("function handleCompactDotClick(event)"), "content.js 应提供 compact dot click handler");
+assert(content.includes("event.preventDefault()"), "compact dot click 应阻止默认行为");
+assert(content.includes("event.stopPropagation()"), "compact dot click 应阻止冒泡干扰");
+assert(content.includes('handlePromptClick(promptId, "compact")'), "compact dot click 应调用统一跳转入口");
+assert(content.includes('compactTimeline.addEventListener("click", handleCompactTimelineClick)'), "dots 容器应有 click 委托兜底");
+assert(content.includes("function handleCompactTimelineClick(event)"), "content.js 应提供 compact timeline click 委托");
+assert(content.includes('event.target.closest(".acn-compact-dot")'), "委托点击应从事件目标查找 dot");
+assert(content.includes('debugNavigator("dot clicked"'), "DEBUG_NAVIGATOR=true 时 dot click 应输出调试信息");
 assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId))'), "prompt list 点击应统一走 handlePromptClick");
 assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId, "pinned"))'), "pinned 点击应统一走 handlePromptClick");
 assert(!content.includes("scrollToMessage(message.element"), "不应绕过统一入口直接用闭包里的 message.element 跳转");
