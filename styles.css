@@ -664,6 +664,7 @@
 /* V2D full-height compact rail */
 #ai-conversation-navigator,
 #ai-conversation-navigator.is-compact {
+  --pn-compact-header-height: 36px;
   top: 0;
   right: 0;
   bottom: 0;
@@ -678,12 +679,14 @@
 
 .acn-compact-header {
   position: absolute;
-  top: 4px;
+  top: 0;
   left: 0;
-  z-index: 2;
+  z-index: 20;
   width: 100%;
-  padding: 2px 0;
+  height: var(--pn-compact-header-height);
+  padding: 4px 0 8px;
   border-bottom: 0;
+  pointer-events: auto;
 }
 
 .acn-compact-header .acn-mode-toggle {
@@ -691,6 +694,7 @@
   height: 24px;
   border-radius: 6px;
   line-height: 22px;
+  pointer-events: auto;
 }
 
 .acn-compact-header .acn-mode-toggle::before {
@@ -703,12 +707,14 @@
   display: block;
   flex: 1 1 auto;
   width: 100%;
-  height: 100vh;
+  height: calc(100vh - var(--pn-compact-header-height));
+  margin-top: var(--pn-compact-header-height);
   max-height: none;
   padding: 0;
   overflow-y: visible;
   overflow-x: visible;
   scrollbar-width: none;
+  z-index: 10;
 }
 
 #ai-conversation-navigator .acn-compact-timeline::-webkit-scrollbar {

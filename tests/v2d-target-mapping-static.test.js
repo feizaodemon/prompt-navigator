@@ -24,6 +24,11 @@ assert(!content.includes("scrollToMessage(message.element"), "不应绕过统一
 
 assert(styles.includes("pointer-events: auto"), "compact dot 应显式接收鼠标事件");
 assert(styles.includes("z-index: 3"), "compact dot 层级应高于 timeline 背景");
+assert(styles.includes("--pn-compact-header-height: 36px"), "compact rail 应定义固定顶部按钮区高度");
+assert(styles.includes("height: var(--pn-compact-header-height)"), "顶部按钮区应占据固定高度");
+assert(styles.includes("z-index: 20"), "搜索 / prompt list 按钮区层级应高于 dots");
+assert(styles.includes("margin-top: var(--pn-compact-header-height)"), "dots 区应从按钮下方开始");
+assert(styles.includes("height: calc(100vh - var(--pn-compact-header-height))"), "dots 区高度应排除顶部按钮区");
 assert(styles.includes(".acn-compact-dot::after"), "compact dot 应使用较大的 button 命中区和较小的视觉圆点");
 assert(styles.includes("width: 24px"), "compact dot button 命中区宽度应大于视觉圆点");
 assert(styles.includes("height: 24px"), "compact dot button 命中区高度应大于视觉圆点");
