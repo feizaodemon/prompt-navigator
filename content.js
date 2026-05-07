@@ -13,6 +13,7 @@
   const PROMPT_LIST_BOTTOM_THRESHOLD_PX = 120;
   const COMPACT_SCROLL_OFFSET_PX = 120;
   const COMPACT_DOT_EDGE_OFFSET_PERCENT = 2;
+  const DEBUG_NAVIGATOR = false;
 
   let activeAdapter = null;
   let root = null;
@@ -34,6 +35,7 @@
   let lastRenderedPromptCount = null;
   let pinnedStore = {};
   let activePromptKey = null;
+  let currentPrompts = [];
   let navigatorMode = MODE_COMPACT;
   let panelOpen = false;
   let collapsed = false;
@@ -212,12 +214,21 @@
     updateTimer = window.setTimeout(() => renderPromptList(true), UPDATE_DELAY_MS);
   }
 
+  function refreshPrompts() {
+    currentPrompts = activeAdapter ? activeAdapter.getUserMessages() : [];
+    return currentPrompts;
+  }
+
+  function findPromptById(promptId) {
+    return currentPrompts.find((prompt) => prompt.id === promptId) || null;
+  }
+
   function renderPromptList(allowAutoScroll) {
     if (!activeAdapter || !list) {
       return;
     }
 
-    const messages = activeAdapter.getUserMessages();
+    const messages = refreshPrompts();
     const query = searchInput ? searchInput.value : "";
     const filteredMessages = filterMessagesByQuery(messages, query);
     const pinnedRecords = getCurrentPinnedRecords();
@@ -237,14 +248,15 @@
     emptyState.hidden = filteredMessages.length > 0;
     emptyState.textContent = messages.length > 0 ? "没有匹配的 prompt" : "暂无可用 prompt";
 
-    filteredMessages.forEach(({ message, index }) => {
-      const promptKey = getPromptKey(message, index);
+    filteredMessages.forEach((prompt) => {
+      const promptKey = prompt.id;
       const item = createPromptItem({
-        message,
+        prompt,
         promptKey,
-        promptNumber: index + 1,
+        promptNumber: prompt.index,
         pinned: pinnedKeys.has(promptKey),
-        showPinButton: true
+        showPinButton: true,
+        source: "list"
       });
       list.appendChild(item);
     });
@@ -269,12 +281,13 @@
     pinnedRecords.forEach((record) => {
       const matchedMessage = messagesByKey.get(record.promptKey);
       const item = createPromptItem({
-        message: matchedMessage ? matchedMessage.message : null,
+        prompt: matchedMessage ? matchedMessage.message : null,
         promptKey: record.promptKey,
         promptNumber: record.promptNumber,
         preview: record.promptPreview,
         pinned: true,
-        showPinButton: true
+        showPinButton: true,
+        source: "pinned"
       });
       pinnedList.appendChild(item);
     });
@@ -287,12 +300,10 @@
 
     compactTimeline.dataset.density = getCompactTimelineDensity(messages.length);
 
-    messages.forEach((message, index) => {
-      const promptKey = getPromptKey(message, index);
+    messages.forEach((prompt, index) => {
+      const promptKey = prompt.id;
       const dot = createCompactDot({
-        message,
-        promptKey,
-        promptNumber: index + 1,
+        prompt,
         pinned: pinnedKeys.has(promptKey)
       });
 
@@ -323,9 +334,10 @@
     return "normal";
   }
 
-  function createPromptItem({ message, promptKey, promptNumber, preview, pinned, showPinButton }) {
+  function createPromptItem({ prompt, promptKey, promptNumber, preview, pinned, showPinButton, source }) {
     const item = document.createElement("div");
     item.className = "acn-item";
+    const promptId = promptKey;
     item.dataset.promptKey = promptKey;
     item.setAttribute("role", "button");
     item.tabIndex = 0;
@@ -341,7 +353,7 @@
 
     const previewNode = document.createElement("span");
     previewNode.className = "acn-item-preview";
-    previewNode.textContent = preview || previewText(message ? message.text : "");
+    previewNode.textContent = preview || (prompt ? prompt.preview : "");
 
     content.append(number, previewNode);
     item.append(content);
@@ -356,19 +368,16 @@
       pinButton.textContent = pinned ? "★" : "☆";
       pinButton.addEventListener("click", (event) => {
         event.stopPropagation();
-        togglePinnedPrompt(message, promptKey, promptNumber, previewNode.textContent);
+        togglePinnedPrompt(prompt, promptKey, promptNumber, previewNode.textContent);
       });
       item.append(pinButton);
     }
 
-    item.addEventListener("click", () => {
-      if (message) {
-        scrollToMessage(message.element, promptKey);
-      } else {
-        setActivePrompt(promptKey);
-        scheduleUpdate();
-      }
-    });
+    if (source === "pinned") {
+      item.addEventListener("click", () => handlePromptClick(promptId, "pinned"));
+    } else {
+      item.addEventListener("click", () => handlePromptClick(promptId));
+    }
 
     item.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") {
@@ -380,37 +389,37 @@
     return item;
   }
 
-  function createCompactDot({ message, promptKey, promptNumber, pinned }) {
+  function createCompactDot({ prompt, pinned }) {
     const dot = document.createElement("button");
     dot.className = "acn-compact-dot";
     dot.type = "button";
-    dot.dataset.promptKey = promptKey;
-    dot.dataset.promptNumber = String(promptNumber);
-    dot.dataset.promptPreview = previewText(message.text);
+    dot.dataset.promptKey = prompt.id;
+    dot.dataset.promptNumber = String(prompt.index);
+    dot.dataset.promptPreview = prompt.preview;
     dot.classList.toggle("is-pinned", pinned);
-    dot.classList.toggle("is-active", activePromptKey === promptKey);
-    dot.setAttribute("aria-label", `Prompt ${promptNumber}: ${previewText(message.text)}`);
-    dot.addEventListener("mouseenter", () => showCompactTooltip(dot, message));
+    dot.classList.toggle("is-active", activePromptKey === prompt.id);
+    dot.setAttribute("aria-label", `Prompt ${prompt.index}: ${prompt.preview}`);
+    dot.addEventListener("mouseenter", () => showCompactTooltip(dot, prompt));
     dot.addEventListener("mouseleave", hideCompactTooltip);
-    dot.addEventListener("focus", () => showCompactTooltip(dot, message));
+    dot.addEventListener("focus", () => showCompactTooltip(dot, prompt));
     dot.addEventListener("blur", hideCompactTooltip);
-    dot.addEventListener("click", () => scrollToMessage(message.element, promptKey, "compact"));
+    dot.addEventListener("click", () => handlePromptClick(prompt.id, "compact"));
 
     return dot;
   }
 
-  function showCompactTooltip(dot, message) {
-    if (!dot || !message) {
+  function showCompactTooltip(dot, prompt) {
+    if (!dot || !prompt) {
       return;
     }
 
     const promptNumber = dot.dataset.promptNumber;
-    const promptPreview = dot.dataset.promptPreview || previewText(message.text);
+    const promptPreview = dot.dataset.promptPreview || prompt.preview;
     const promptIndex = Number(promptNumber);
 
     console.log("[Prompt Navigator][Compact Tooltip] show", {
       promptIndex,
-      textLength: message.text.length,
+      textLength: prompt.text.length,
       preview: promptPreview
     });
 
@@ -499,24 +508,35 @@
     compactTooltipFrame = null;
   }
 
-  function scrollToMessage(element, promptKey, source) {
-    if (!element || !element.isConnected) {
-      scheduleUpdate();
+  function handlePromptClick(promptId, source) {
+    let prompt = findPromptById(promptId);
+    if (!prompt || !prompt.element || !prompt.element.isConnected) {
+      refreshPrompts();
+      prompt = findPromptById(promptId);
+    }
+
+    if (!prompt || !prompt.element || !prompt.element.isConnected) {
+      debugNavigator("prompt target missing", {
+        clickedPromptId: promptId,
+        activePromptId: activePromptKey
+      });
       return;
     }
 
-    setActivePrompt(promptKey);
+    scrollToPrompt(prompt, source);
+  }
+
+  function scrollToPrompt(prompt, source) {
+    const element = prompt.element;
+    setActivePrompt(prompt.id);
+    debugPromptClick(prompt, source);
 
     if (source === "compact") {
-      const previousScrollMarginTop = element.style.scrollMarginTop;
-      element.style.scrollMarginTop = `${COMPACT_SCROLL_OFFSET_PX}px`;
-      element.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
+      const targetTop = element.getBoundingClientRect().top + window.scrollY - COMPACT_SCROLL_OFFSET_PX;
+      window.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "smooth"
       });
-      window.setTimeout(() => {
-        element.style.scrollMarginTop = previousScrollMarginTop;
-      }, HIGHLIGHT_DELAY_MS);
     } else {
       element.scrollIntoView({
         behavior: "smooth",
@@ -528,6 +548,25 @@
     window.setTimeout(() => {
       element.classList.remove(HIGHLIGHT_CLASS);
     }, HIGHLIGHT_DELAY_MS);
+  }
+
+  function debugPromptClick(prompt, source) {
+    debugNavigator("prompt click", {
+      source: source || "list",
+      clickedPromptIndex: prompt.index,
+      clickedPromptId: prompt.id,
+      clickedPromptPreview: prompt.preview,
+      targetElementPreview: previewText(getMessageText(prompt.element)),
+      activePromptId: activePromptKey
+    });
+  }
+
+  function debugNavigator(message, details) {
+    if (!DEBUG_NAVIGATOR) {
+      return;
+    }
+
+    console.log("[Prompt Navigator][Debug]", message, details);
   }
 
   function setActivePrompt(promptKey) {
@@ -778,13 +817,17 @@
 
   function mapMessagesByPromptKey(messages) {
     const map = new Map();
-    messages.forEach((message, index) => {
-      map.set(getPromptKey(message, index), { message, index });
+    messages.forEach((message) => {
+      map.set(message.id, { message, index: message.index - 1 });
     });
     return map;
   }
 
   function getPromptKey(message, index) {
+    if (message.id) {
+      return message.id;
+    }
+
     return `${getConversationKey()}::${index + 1}::${hashText(message.text)}`;
   }
 
@@ -794,22 +837,39 @@
 
   function normalizeMessages(elements, platformKey) {
     const seen = new Set();
+    const prompts = [];
 
-    return elements
-      .filter(isValidMessageElement)
-      .map((element, index) => {
+    elements.filter(isValidMessageElement).forEach((element) => {
         const text = getMessageText(element);
-        const id = getStableElementId(element, platformKey, index, text);
-        return { id, text, element };
-      })
-      .filter((message) => {
-        const key = `${message.id}:${message.text}`;
+        const elementId = getStableElementId(element, platformKey, prompts.length, text);
+        const key = `${elementId}:${text}`;
         if (seen.has(key)) {
-          return false;
+          return;
         }
         seen.add(key);
-        return true;
+        prompts.push(
+          buildPromptRecord({
+            element,
+            index: prompts.length + 1,
+            text
+          })
+        );
       });
+
+    return prompts;
+  }
+
+  function buildPromptRecord({ element, index, text }) {
+    const prompt = {
+      id: getPromptKey({ text }, index - 1),
+      index,
+      text,
+      preview: previewText(text),
+      element
+    };
+
+    element.dataset.acnPromptKey = prompt.id;
+    return prompt;
   }
 
   function isValidMessageElement(element) {
@@ -845,14 +905,12 @@
   function filterMessagesByQuery(messages, query) {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     if (!normalizedQuery) {
-      return messages.map((message, index) => ({ message, index }));
+      return messages;
     }
 
-    return messages
-      .map((message, index) => ({ message, index }))
-      .filter(({ message }) => {
+    return messages.filter((message) => {
         const text = message.text.toLocaleLowerCase();
-        const preview = previewText(message.text).toLocaleLowerCase();
+        const preview = message.preview.toLocaleLowerCase();
         return text.includes(normalizedQuery) || preview.includes(normalizedQuery);
       });
   }
