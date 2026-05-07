@@ -718,18 +718,51 @@
 .acn-compact-dot {
   position: absolute;
   left: 50%;
-  width: 10px;
-  height: 10px;
+  z-index: 3;
+  width: 24px;
+  height: 24px;
   flex: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
   border-width: 1px;
+  pointer-events: auto;
   transform: translate(-50%, -50%);
 }
 
 .acn-compact-dot:hover {
+  background: transparent;
+  border-color: transparent;
   transform: translate(-50%, -50%) scale(1.18);
 }
 
+.acn-compact-dot::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  content: "";
+  background: var(--pn-dot);
+  border: 1px solid var(--pn-bg);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.acn-compact-dot:hover::after {
+  background: var(--pn-dot-hover);
+  border-color: var(--pn-dot-active-border);
+}
+
 .acn-compact-dot.is-active {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.acn-compact-dot.is-active::after {
   width: 14px;
   height: 14px;
   background: var(--pn-dot-active);
@@ -738,22 +771,26 @@
 }
 
 .acn-compact-dot.is-pinned {
+  box-shadow: none;
+}
+
+.acn-compact-dot.is-pinned::after {
   border-color: var(--pn-dot-pinned);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--pn-dot-pinned), transparent 65%);
 }
 
-.acn-compact-dot.is-active.is-pinned {
+.acn-compact-dot.is-active.is-pinned::after {
   box-shadow:
     0 0 0 2px color-mix(in srgb, var(--pn-dot-pinned), transparent 55%),
     0 0 0 5px color-mix(in srgb, var(--pn-dot-active), transparent 78%);
 }
 
-.acn-compact-timeline[data-density="dense"] .acn-compact-dot {
+.acn-compact-timeline[data-density="dense"] .acn-compact-dot::after {
   width: 8px;
   height: 8px;
 }
 
-.acn-compact-timeline[data-density="very-dense"] .acn-compact-dot {
+.acn-compact-timeline[data-density="very-dense"] .acn-compact-dot::after {
   width: 6px;
   height: 6px;
 }

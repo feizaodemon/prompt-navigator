@@ -2,6 +2,7 @@ const assert = require("assert");
 const fs = require("fs");
 
 const content = fs.readFileSync("content.js", "utf8");
+const styles = fs.readFileSync("styles.css", "utf8");
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
 
 assert.deepStrictEqual(manifest.content_scripts[0].matches, ["https://chatgpt.com/*"]);
@@ -20,6 +21,12 @@ assert(content.includes('dot.addEventListener("click", () => handlePromptClick(p
 assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId))'), "prompt list 点击应统一走 handlePromptClick");
 assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId, "pinned"))'), "pinned 点击应统一走 handlePromptClick");
 assert(!content.includes("scrollToMessage(message.element"), "不应绕过统一入口直接用闭包里的 message.element 跳转");
+
+assert(styles.includes("pointer-events: auto"), "compact dot 应显式接收鼠标事件");
+assert(styles.includes("z-index: 3"), "compact dot 层级应高于 timeline 背景");
+assert(styles.includes(".acn-compact-dot::after"), "compact dot 应使用较大的 button 命中区和较小的视觉圆点");
+assert(styles.includes("width: 24px"), "compact dot button 命中区宽度应大于视觉圆点");
+assert(styles.includes("height: 24px"), "compact dot button 命中区高度应大于视觉圆点");
 
 assert(!content.includes("fetch("), "content.js 不应上传数据或请求外部服务");
 assert(!content.includes("XMLHttpRequest"), "content.js 不应使用 XMLHttpRequest");
