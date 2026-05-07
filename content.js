@@ -416,12 +416,12 @@
 
     const dot = event.currentTarget;
     const promptId = dot.dataset.promptId;
-    debugNavigator("dot clicked", {
+    debugNavigator("compact dot clicked", {
       promptId,
-      promptIndex: dot.dataset.promptNumber,
-      promptPreview: dot.dataset.promptPreview
+      index: Number(dot.dataset.promptNumber),
+      promptText: dot.dataset.promptPreview
     });
-    handlePromptClick(promptId, "compact");
+    handlePromptClick(promptId);
   }
 
   function handleCompactTimelineClick(event) {
@@ -432,7 +432,7 @@
 
     event.preventDefault();
     event.stopPropagation();
-    handlePromptClick(dot.dataset.promptId, "compact");
+    handlePromptClick(dot.dataset.promptId);
   }
 
   function showCompactTooltip(dot, prompt) {
@@ -543,6 +543,12 @@
     }
 
     if (!prompt || !prompt.element || !prompt.element.isConnected) {
+      debugNavigator("jump requested", {
+        index: null,
+        promptId,
+        targetFound: false,
+        targetElement: null
+      });
       debugNavigator("prompt target missing", {
         clickedPromptId: promptId,
         activePromptId: activePromptKey
@@ -556,20 +562,12 @@
   function scrollToPrompt(prompt, source) {
     const element = prompt.element;
     setActivePrompt(prompt.id);
-    debugPromptClick(prompt, source);
+    debugPromptClick(prompt, source, true);
 
-    if (source === "compact") {
-      const targetTop = element.getBoundingClientRect().top + window.scrollY - COMPACT_SCROLL_OFFSET_PX;
-      window.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: "smooth"
-      });
-    } else {
-      element.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-      });
-    }
+    element.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
 
     element.classList.add(HIGHLIGHT_CLASS);
     window.setTimeout(() => {
@@ -577,13 +575,14 @@
     }, HIGHLIGHT_DELAY_MS);
   }
 
-  function debugPromptClick(prompt, source) {
-    debugNavigator("prompt click", {
+  function debugPromptClick(prompt, source, targetFound) {
+    debugNavigator("jump requested", {
       source: source || "list",
-      clickedPromptIndex: prompt.index,
-      clickedPromptId: prompt.id,
-      clickedPromptPreview: prompt.preview,
-      targetElementPreview: previewText(getMessageText(prompt.element)),
+      index: prompt.index,
+      promptId: prompt.id,
+      promptText: prompt.preview,
+      targetFound,
+      targetElement: prompt.element,
       activePromptId: activePromptKey
     });
   }
@@ -593,7 +592,7 @@
       return;
     }
 
-    console.log("[Prompt Navigator][Debug]", message, details);
+    console.debug("[PromptNavigator]", message, details);
   }
 
   function setActivePrompt(promptKey) {
