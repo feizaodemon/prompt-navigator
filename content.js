@@ -11,6 +11,8 @@
   const UPDATE_DELAY_MS = 300;
   const HIGHLIGHT_DELAY_MS = 1600;
   const PROMPT_LIST_BOTTOM_THRESHOLD_PX = 120;
+  const COMPACT_SCROLL_OFFSET_PX = 120;
+  const COMPACT_DOT_EDGE_OFFSET_PERCENT = 2;
 
   let activeAdapter = null;
   let root = null;
@@ -283,17 +285,42 @@
       return;
     }
 
+    compactTimeline.dataset.density = getCompactTimelineDensity(messages.length);
+
     messages.forEach((message, index) => {
       const promptKey = getPromptKey(message, index);
-      compactTimeline.appendChild(
-        createCompactDot({
-          message,
-          promptKey,
-          promptNumber: index + 1,
-          pinned: pinnedKeys.has(promptKey)
-        })
-      );
+      const dot = createCompactDot({
+        message,
+        promptKey,
+        promptNumber: index + 1,
+        pinned: pinnedKeys.has(promptKey)
+      });
+
+      dot.style.top = `${calculateCompactDotPosition(index, messages.length)}%`;
+      compactTimeline.appendChild(dot);
     });
+  }
+
+  function calculateCompactDotPosition(index, total) {
+    if (total <= 1) {
+      return 50;
+    }
+
+    const availableRange = 100 - COMPACT_DOT_EDGE_OFFSET_PERCENT * 2;
+    const position = COMPACT_DOT_EDGE_OFFSET_PERCENT + (index / (total - 1)) * availableRange;
+    return Math.round(position * 100) / 100;
+  }
+
+  function getCompactTimelineDensity(total) {
+    if (total >= 120) {
+      return "very-dense";
+    }
+
+    if (total >= 64) {
+      return "dense";
+    }
+
+    return "normal";
   }
 
   function createPromptItem({ message, promptKey, promptNumber, preview, pinned, showPinButton }) {
@@ -367,7 +394,7 @@
     dot.addEventListener("mouseleave", hideCompactTooltip);
     dot.addEventListener("focus", () => showCompactTooltip(dot, message));
     dot.addEventListener("blur", hideCompactTooltip);
-    dot.addEventListener("click", () => scrollToMessage(message.element, promptKey));
+    dot.addEventListener("click", () => scrollToMessage(message.element, promptKey, "compact"));
 
     return dot;
   }
@@ -402,7 +429,7 @@
 
     const numberLine = document.createElement("div");
     numberLine.className = "acn-dot-tooltip-number";
-    numberLine.textContent = `Prompt ${promptNumber}`;
+    numberLine.textContent = `#${promptNumber}`;
 
     const previewLine = document.createElement("div");
     previewLine.className = "acn-dot-tooltip-preview";
@@ -472,7 +499,7 @@
     compactTooltipFrame = null;
   }
 
-  function scrollToMessage(element, promptKey) {
+  function scrollToMessage(element, promptKey, source) {
     if (!element || !element.isConnected) {
       scheduleUpdate();
       return;
@@ -480,10 +507,22 @@
 
     setActivePrompt(promptKey);
 
-    element.scrollIntoView({
-      behavior: "smooth",
-      block: "center"
-    });
+    if (source === "compact") {
+      const previousScrollMarginTop = element.style.scrollMarginTop;
+      element.style.scrollMarginTop = `${COMPACT_SCROLL_OFFSET_PX}px`;
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+      window.setTimeout(() => {
+        element.style.scrollMarginTop = previousScrollMarginTop;
+      }, HIGHLIGHT_DELAY_MS);
+    } else {
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+    }
 
     element.classList.add(HIGHLIGHT_CLASS);
     window.setTimeout(() => {

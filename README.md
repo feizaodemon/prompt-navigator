@@ -31,6 +31,17 @@
 4. 当前 active prompt 的圆点会高亮。
 5. prompt 很多时，timeline 内部可以滚动，整体不会超出屏幕。
 
+## V2D Compact Timeline Polish
+
+V2D 继续收紧 compact timeline 的右侧导航体验：
+
+1. compact timeline 默认固定在浏览器最右侧，宽度为 32px，高度尽量贴合 `100vh`，顶部和底部不再保留明显空白。
+2. 圆点不再使用纵向 flex 列表，而是按 prompt 顺序做百分比绝对定位：首尾圆点靠近轨道上下端，中间圆点按比例均匀分布。普通数量下不显示内部滚动条，极端数量下会自动缩小圆点。
+3. 搜索 / prompt list 仍通过顶部小按钮打开浮动面板，默认不显示大侧边栏。
+4. hover tooltip 以 prompt 内容预览为主，编号弱化为小号 `#n` 元信息，不再显示醒目的大号 `Prompt N` 标题。
+5. 点击 compact 圆点时使用精确滚动目标，目标 prompt 会尽量落在 viewport 顶部下方约 100px 到 140px 的位置，便于同时看到该 prompt 和后续回答。
+6. pinned prompt 圆点保留特殊外圈样式，active prompt 圆点保留明显高亮。
+
 ## 搜索 / Prompt List 面板
 
 compact timeline 顶部有一个小按钮，用于打开搜索和完整 prompt list 面板。
@@ -103,6 +114,8 @@ DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全
 4. 在 timeline 内滚动，确认圆点仍可点击和 hover。
 5. 点击圆点，确认页面平滑跳转到对应用户消息。
 6. hover 圆点，确认 tooltip 在左侧显示 prompt preview。
+7. 确认右侧 rail 贴合完整浏览器高度，圆点按上下百分比分布而不是挤成滚动列表。
+8. 点击圆点后，确认目标 prompt 停在页面顶部下方约 100px 到 140px，并且后续回答仍可见。
 
 ### 搜索 / Prompt List 面板
 
@@ -134,6 +147,7 @@ DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全
 node tests/v2a-static.test.js
 node tests/v2b-static.test.js
 node tests/v2c-static.test.js
+node tests/v2d-static.test.js
 node --check content.js
 ```
 
