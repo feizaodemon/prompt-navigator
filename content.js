@@ -13,6 +13,8 @@
   const PROMPT_LIST_BOTTOM_THRESHOLD_PX = 120;
   const COMPACT_SCROLL_OFFSET_PX = 120;
   const COMPACT_DOT_EDGE_OFFSET_PERCENT = 2;
+  const ACTIVE_PROMPT_VIEWPORT_RATIO = 0.35;
+  const COMPACT_TOOLTIP_MAX_TEXT_LENGTH = 280;
   const DEBUG_NAVIGATOR = false;
 
   let activeAdapter = null;
@@ -27,6 +29,8 @@
   let modeToggleButton = null;
   let compactTooltip = null;
   let compactTooltipFrame = null;
+  let activePromptFrame = null;
+  let activeScrollContainer = null;
   let themeObserver = null;
   let themeUpdateFrame = null;
   let currentTheme = null;
@@ -35,6 +39,7 @@
   let lastRenderedPromptCount = null;
   let pinnedStore = {};
   let activePromptKey = null;
+  let activePromptIndex = -1;
   let currentPrompts = [];
   let navigatorMode = MODE_COMPACT;
   let panelOpen = false;
@@ -70,6 +75,7 @@
       applyNavigatorMode();
       scheduleUpdate();
       startObserver();
+      startActivePromptTracking();
     });
   }
 
@@ -210,6 +216,82 @@
     });
   }
 
+  function startActivePromptTracking() {
+    attachActivePromptScrollListener();
+    window.addEventListener("resize", scheduleActivePromptUpdate);
+    scheduleActivePromptUpdate();
+  }
+
+  function attachActivePromptScrollListener() {
+    const nextScrollContainer = findScrollContainer();
+    if (!nextScrollContainer || nextScrollContainer === activeScrollContainer) {
+      return;
+    }
+
+    if (activeScrollContainer) {
+      activeScrollContainer.removeEventListener("scroll", handleActivePromptScroll);
+    }
+
+    activeScrollContainer = nextScrollContainer;
+    activeScrollContainer.addEventListener("scroll", handleActivePromptScroll, { passive: true });
+    debugNavigator("[PromptNavigator] scroll container", activeScrollContainer);
+  }
+
+  function handleActivePromptScroll() {
+    debugNavigator("[PromptNavigator] scroll event fired", {
+      scrollContainer: activeScrollContainer
+    });
+    scheduleActivePromptUpdate();
+  }
+
+  function findScrollContainer() {
+    const promptScrollContainer = findPromptScrollContainer();
+    if (promptScrollContainer) {
+      return promptScrollContainer;
+    }
+
+    const candidates = uniqueElements([
+      document.scrollingElement,
+      document.documentElement,
+      document.body,
+      ...document.querySelectorAll("main, [role='main'], .overflow-y-auto, .overflow-auto")
+    ]);
+
+    return candidates.find(isScrollableContainer) || window;
+  }
+
+  function findPromptScrollContainer() {
+    const prompt = currentPrompts.find((entry) => entry.element && entry.element.isConnected);
+    let element = prompt ? prompt.element.parentElement : null;
+
+    while (element && element !== document.body && element !== document.documentElement) {
+      if (isScrollableContainer(element)) {
+        return element;
+      }
+
+      element = element.parentElement;
+    }
+
+    return null;
+  }
+
+  function isScrollableContainer(element) {
+    if (!element || !(element instanceof HTMLElement)) {
+      return false;
+    }
+
+    const style = getComputedStyle(element);
+    const overflowY = style.overflowY;
+    const canScroll = element.scrollHeight > element.clientHeight + 1;
+    const allowsScroll =
+      overflowY === "auto" ||
+      overflowY === "scroll" ||
+      overflowY === "overlay" ||
+      element === document.scrollingElement;
+
+    return canScroll && allowsScroll;
+  }
+
   function scheduleUpdate() {
     window.clearTimeout(updateTimer);
     updateTimer = window.setTimeout(() => renderPromptList(true), UPDATE_DELAY_MS);
@@ -269,6 +351,8 @@
     }
 
     lastRenderedPromptCount = messages.length;
+    attachActivePromptScrollListener();
+    scheduleActivePromptUpdate();
   }
 
   function renderPinnedPrompts(pinnedRecords, messagesByKey) {
@@ -340,10 +424,11 @@
     item.className = "acn-item";
     const promptId = promptKey;
     item.dataset.promptKey = promptKey;
+    item.dataset.promptIndex = String(promptNumber);
     item.setAttribute("role", "button");
     item.tabIndex = 0;
     item.classList.toggle("is-pinned", pinned);
-    item.classList.toggle("is-active", activePromptKey === promptKey);
+    item.classList.toggle("is-active", isPromptActive(promptKey, promptNumber));
 
     const content = document.createElement("div");
     content.className = "acn-item-content";
@@ -399,7 +484,7 @@
     dot.dataset.promptNumber = String(prompt.index);
     dot.dataset.promptPreview = prompt.preview;
     dot.classList.toggle("is-pinned", pinned);
-    dot.classList.toggle("is-active", activePromptKey === prompt.id);
+    dot.classList.toggle("is-active", isPromptActive(prompt.id, prompt.index));
     dot.setAttribute("aria-label", `Prompt ${prompt.index}: ${prompt.preview}`);
     dot.addEventListener("mouseenter", () => showCompactTooltip(dot, prompt));
     dot.addEventListener("mouseleave", hideCompactTooltip);
@@ -441,10 +526,9 @@
     }
 
     const promptNumber = dot.dataset.promptNumber;
-    const promptPreview = dot.dataset.promptPreview || prompt.preview;
+    const promptPreview = getCompactTooltipPreview(prompt);
     const promptIndex = Number(promptNumber);
-
-    console.log("[Prompt Navigator][Compact Tooltip] show", {
+    debugNavigator("[Prompt Navigator][Compact Tooltip] show", {
       promptIndex,
       textLength: prompt.text.length,
       preview: promptPreview
@@ -462,6 +546,7 @@
     compactTooltip.classList.remove("is-visible");
     compactTooltip.style.top = "0";
     compactTooltip.style.left = "0";
+    compactTooltip.style.width = "";
 
     const numberLine = document.createElement("div");
     numberLine.className = "acn-dot-tooltip-number";
@@ -469,12 +554,13 @@
 
     const previewLine = document.createElement("div");
     previewLine.className = "acn-dot-tooltip-preview";
-    previewLine.textContent = promptPreview;
+    const fullPromptPreview = promptPreview;
+    previewLine.textContent = fullPromptPreview;
 
     compactTooltip.append(numberLine, previewLine);
     compactTooltipFrame = window.requestAnimationFrame(() => {
       compactTooltipFrame = null;
-      layoutCompactTooltip(dot, promptIndex, promptPreview);
+      layoutCompactTooltip(dot, promptIndex, fullPromptPreview);
     });
   }
 
@@ -501,18 +587,13 @@
     compactTooltip.style.left = `${left}px`;
     compactTooltip.style.top = `${top}px`;
     compactTooltip.classList.add("is-visible");
-
-    console.log("[Prompt Navigator][Compact Tooltip] layout", {
+    debugNavigator("[Prompt Navigator][Compact Tooltip] layout", {
       dotRect,
       tooltipRect,
       top,
       left,
       promptIndex,
-      preview,
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight
-      }
+      preview
     });
   }
 
@@ -533,6 +614,15 @@
 
     window.cancelAnimationFrame(compactTooltipFrame);
     compactTooltipFrame = null;
+  }
+
+  function getCompactTooltipPreview(prompt) {
+    const text = prompt && prompt.text ? prompt.text : "";
+    if (text.length <= COMPACT_TOOLTIP_MAX_TEXT_LENGTH) {
+      return text;
+    }
+
+    return `${text.slice(0, COMPACT_TOOLTIP_MAX_TEXT_LENGTH)}...`;
   }
 
   function handlePromptClick(promptId, source) {
@@ -561,7 +651,7 @@
 
   function scrollToPrompt(prompt, source) {
     const element = prompt.element;
-    setActivePrompt(prompt.id);
+    setActivePrompt(prompt.id, prompt.index);
     debugPromptClick(prompt, source, true);
 
     element.scrollIntoView({
@@ -583,7 +673,8 @@
       promptText: prompt.preview,
       targetFound,
       targetElement: prompt.element,
-      activePromptId: activePromptKey
+      activePromptId: activePromptKey,
+      activePromptIndex
     });
   }
 
@@ -595,20 +686,107 @@
     console.debug("[PromptNavigator]", message, details);
   }
 
-  function setActivePrompt(promptKey) {
+  function setActivePrompt(promptKey, promptIndex) {
+    if (activePromptKey === promptKey && activePromptIndex === promptIndex) {
+      return;
+    }
+
     activePromptKey = promptKey;
+    activePromptIndex = promptIndex;
 
     if (!root) {
       return;
     }
 
     root.querySelectorAll(".acn-item").forEach((item) => {
-      item.classList.toggle("is-active", item.dataset.promptKey === promptKey);
+      item.classList.toggle("is-active", isPromptActive(item.dataset.promptKey, Number(item.dataset.promptIndex)));
     });
 
     root.querySelectorAll(".acn-compact-dot").forEach((dot) => {
-      dot.classList.toggle("is-active", dot.dataset.promptKey === promptKey);
+      dot.classList.toggle("is-active", isPromptActive(dot.dataset.promptKey, Number(dot.dataset.promptNumber)));
     });
+  }
+
+  function isPromptActive(promptKey, promptIndex) {
+    return promptKey === activePromptKey && promptIndex === activePromptIndex;
+  }
+
+  function scheduleActivePromptUpdate() {
+    if (activePromptFrame !== null) {
+      return;
+    }
+
+    activePromptFrame = window.requestAnimationFrame(() => {
+      activePromptFrame = null;
+      updateActivePromptFromViewport();
+    });
+  }
+
+  function updateActivePromptFromViewport() {
+    if (!currentPrompts.length) {
+      setActivePrompt(null, -1);
+      debugNavigator("[PromptNavigator] active update", {
+        activePromptIndex,
+        promptCount: 0,
+        reason: "empty"
+      });
+      return;
+    }
+
+    let bestPrompt = null;
+    let previousPrompt = null;
+    let firstPrompt = null;
+    let bestScore = Infinity;
+    let reason = "visible";
+    const viewportMiddle = window.innerHeight * ACTIVE_PROMPT_VIEWPORT_RATIO;
+
+    currentPrompts.forEach((prompt) => {
+      if (!prompt.element || !prompt.element.isConnected) {
+        return;
+      }
+
+      if (!firstPrompt) {
+        firstPrompt = prompt;
+      }
+
+      const rect = prompt.element.getBoundingClientRect();
+      if (rect.top <= viewportMiddle) {
+        previousPrompt = prompt;
+      }
+
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        return;
+      }
+
+      const score = getPromptViewportScore(prompt.element);
+      if (score < bestScore) {
+        bestScore = score;
+        bestPrompt = prompt;
+      }
+    });
+
+    if (!bestPrompt) {
+      bestPrompt = previousPrompt || firstPrompt;
+      reason = previousPrompt ? "previous" : "first";
+    }
+
+    if (bestPrompt) {
+      setActivePrompt(bestPrompt.id, bestPrompt.index);
+    }
+
+    debugNavigator("[PromptNavigator] active update", {
+      activePromptIndex,
+      promptCount: currentPrompts.length,
+      reason
+    });
+  }
+
+  function getPromptViewportScore(element) {
+    const rect = element.getBoundingClientRect();
+    const viewportTarget = window.innerHeight * ACTIVE_PROMPT_VIEWPORT_RATIO;
+    const promptCenter = rect.top + rect.height / 2;
+
+    return Math.abs(promptCenter - viewportTarget);
   }
 
   function togglePinnedPrompt(message, promptKey, promptNumber, promptPreview) {

@@ -431,7 +431,8 @@
   z-index: 1000000;
   box-sizing: border-box;
   min-width: 180px;
-  max-width: 280px;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 24px));
   padding: 10px 12px;
   color: var(--pn-tooltip-text);
   background: var(--pn-tooltip-bg);
