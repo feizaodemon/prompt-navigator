@@ -17,8 +17,8 @@ assert(content.includes('createViewTab("Prompts", VIEW_PROMPTS)'), "Prompts tab 
 assert(content.includes('createViewTab("Collections", VIEW_COLLECTIONS)'), "Collections tab should exist");
 assert(content.includes('"No collections yet"'), "collections empty state should exist");
 assert(content.includes('"Collections will let you group related conversations by topic."'), "collections shell should explain empty state");
-assert(content.includes('"New collection"'), "future new collection placeholder should exist");
-assert(content.includes("V3D"), "placeholder action should be labeled as future V3D work");
+assert(content.includes("collectionNameInput"), "collection create input should be wired into the collections shell");
+assert(content.includes("createCollectionFromInput"), "collections shell should expose V3D create flow");
 
 assert(content.includes("loadCollectionsState().then"), "collections view should reuse loadCollectionsState()");
 assert(content.includes("normalizeCollectionsState(state)"), "collections view should normalize loaded collections state");
@@ -26,11 +26,8 @@ assert(content.includes('const COLLECTIONS_STORAGE_KEY = "aiConversationNavigato
 assert(!content.includes("aiConversationNavigatorCollectionUi"), "V3C must not add a second collections storage key");
 assert(!content.includes("aiConversationNavigatorCollectionDrafts"), "V3C must not add draft storage keys");
 
-const saveCalls = content.match(/saveCollectionsState\(/g) || [];
-assert.strictEqual(saveCalls.length, 1, "V3C UI shell must not call saveCollectionsState outside the helper definition");
-assert(!content.includes("createCollectionFromUi"), "V3C must not implement create collection UI writes");
+assert(!content.includes("createCollectionFromUi"), "collections UI should not add a second create flow");
 assert(!content.includes("deleteCollection"), "V3C must not implement delete collection UI writes");
-assert(!content.includes("addCurrentConversation"), "V3C must not implement add current conversation");
 assert(!content.includes("openSavedConversation"), "V3C must not implement saved conversation URL opening");
 
 assert(content.includes("function handlePromptClick(promptId, source, displayedIndex)"), "prompt click entry should remain");

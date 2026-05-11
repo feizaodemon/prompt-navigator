@@ -39,6 +39,8 @@
   let promptTab = null;
   let collectionsTab = null;
   let collectionsView = null;
+  let collectionNameInput = null;
+  let collectionStatus = null;
   let collectionList = null;
   let collectionsEmpty = null;
   let activePanelView = VIEW_PROMPTS;
@@ -211,14 +213,32 @@
     collectionsTitle.className = "acn-section-title";
     collectionsTitle.textContent = "Collections";
 
-    const newCollectionButton = document.createElement("button");
-    newCollectionButton.className = "acn-new-collection-placeholder";
-    newCollectionButton.type = "button";
-    newCollectionButton.disabled = true;
-    newCollectionButton.title = "Future V3D action";
-    newCollectionButton.textContent = "New collection";
+    const createWrap = document.createElement("div");
+    createWrap.className = "acn-collection-create";
 
-    collectionsHeader.append(collectionsTitle, newCollectionButton);
+    collectionNameInput = document.createElement("input");
+    collectionNameInput.className = "acn-collection-input";
+    collectionNameInput.type = "text";
+    collectionNameInput.placeholder = "Collection name";
+    collectionNameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        createCollectionFromInput();
+      }
+    });
+
+    const createCollectionButton = document.createElement("button");
+    createCollectionButton.className = "acn-collection-create-button";
+    createCollectionButton.type = "button";
+    createCollectionButton.textContent = "Create";
+    createCollectionButton.addEventListener("click", createCollectionFromInput);
+
+    createWrap.append(collectionNameInput, createCollectionButton);
+
+    collectionsHeader.append(collectionsTitle, createWrap);
+
+    collectionStatus = document.createElement("div");
+    collectionStatus.className = "acn-collection-status";
+    collectionStatus.hidden = true;
 
     collectionsEmpty = document.createElement("div");
     collectionsEmpty.className = "acn-collections-empty";
@@ -237,7 +257,7 @@
     collectionList = document.createElement("div");
     collectionList.className = "acn-collection-list";
 
-    collectionsView.append(collectionsHeader, collectionsEmpty, collectionList);
+    collectionsView.append(collectionsHeader, collectionStatus, collectionsEmpty, collectionList);
 
     compactHeader.append(modeToggleButton);
     panel.append(panelHeader, meta, viewTabs, searchWrap, pinnedSection, list, emptyState, collectionsView);
@@ -523,7 +543,7 @@
       collectionsEmpty.hidden = collections.length > 0;
 
       collections.forEach((collection) => {
-        collectionList.appendChild(createCollectionItem(collection));
+        collectionList.appendChild(createCollectionItem(collection, normalizedState));
       });
     }).catch((error) => {
       debugNavigator("[PromptNavigator] collections view render failed", error);
@@ -536,9 +556,50 @@
     });
   }
 
-  function createCollectionItem(collection) {
+  function createCollectionFromInput() {
+    if (!collectionNameInput) {
+      return;
+    }
+
+    const collectionName = collectionNameInput.value.trim();
+    if (!collectionName) {
+      setCollectionStatus("Enter a collection name");
+      return;
+    }
+
+    loadCollectionsState().then((state) => {
+      const collection = createCollectionDraft(collectionName);
+      const nextState = normalizeCollectionsState({
+        ...state,
+        collectionsById: {
+          ...state.collectionsById,
+          [collection.id]: collection
+        },
+        collectionOrder: [...state.collectionOrder, collection.id]
+      });
+
+      return saveCollectionsState(nextState).then((saved) => {
+        if (!saved) {
+          setCollectionStatus("Could not save collection");
+          return;
+        }
+
+        collectionNameInput.value = "";
+        setCollectionStatus("Created");
+        renderCollectionsView();
+      });
+    }).catch((error) => {
+      debugNavigator("[PromptNavigator] collection create failed", error);
+      setCollectionStatus("Could not save collection");
+    });
+  }
+
+  function createCollectionItem(collection, state) {
     const item = document.createElement("div");
     item.className = "acn-collection-item";
+
+    const body = document.createElement("div");
+    body.className = "acn-collection-body";
 
     const title = document.createElement("div");
     title.className = "acn-collection-title";
@@ -549,10 +610,78 @@
     const conversationCount = collection.conversationIds.length;
     const countText = `${conversationCount} ${conversationCount === 1 ? "conversation" : "conversations"}`;
     const updatedAt = formatCollectionUpdatedAt(collection.updatedAt);
-    meta.textContent = updatedAt ? `${countText} · Updated ${updatedAt}` : countText;
+    meta.textContent = "";
+    const count = document.createElement("span");
+    count.className = "acn-collection-count";
+    count.textContent = countText;
+    meta.appendChild(count);
+    if (updatedAt) {
+      const updated = document.createElement("span");
+      updated.className = "acn-collection-updated";
+      updated.textContent = `Updated ${updatedAt}`;
+      meta.append(" · ", updated);
+    }
 
-    item.append(title, meta);
+    body.append(title, meta);
+
+    const action = document.createElement("button");
+    action.className = "acn-collection-action";
+    action.type = "button";
+    action.textContent = "Add current";
+    action.addEventListener("click", () => addCurrentConversationToCollection(collection.id, action));
+
+    const conversationMetadata = getCurrentConversationMetadata();
+    const currentConversationId = generateSavedConversationId(conversationMetadata);
+    const conversationIds = Array.isArray(collection.conversationIds) ? collection.conversationIds : [];
+    if (conversationIds.includes(currentConversationId)) {
+      action.textContent = "Added";
+      action.disabled = true;
+    }
+
+    item.append(body, action);
     return item;
+  }
+
+  function addCurrentConversationToCollection(collectionId, actionButton) {
+    if (!collectionId) {
+      return;
+    }
+
+    if (actionButton) {
+      actionButton.disabled = true;
+    }
+
+    loadCollectionsState().then((state) => {
+      const conversationMetadata = getCurrentConversationMetadata();
+      const nextState = addConversationToCollectionState(state, collectionId, conversationMetadata);
+      return saveCollectionsState(nextState).then((saved) => {
+        if (!saved) {
+          setCollectionStatus("Could not save conversation");
+          if (actionButton) {
+            actionButton.disabled = false;
+          }
+          return;
+        }
+
+        setCollectionStatus("Added");
+        renderCollectionsView();
+      });
+    }).catch((error) => {
+      debugNavigator("[PromptNavigator] add current conversation failed", error);
+      setCollectionStatus("Could not save conversation");
+      if (actionButton) {
+        actionButton.disabled = false;
+      }
+    });
+  }
+
+  function setCollectionStatus(message) {
+    if (!collectionStatus) {
+      return;
+    }
+
+    collectionStatus.textContent = message;
+    collectionStatus.hidden = !message;
   }
 
   function formatCollectionUpdatedAt(updatedAt) {
