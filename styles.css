@@ -472,6 +472,13 @@
 .acn-collection-body {
   min-width: 0;
   flex: 1 1 auto;
+  cursor: pointer;
+  outline: none;
+}
+
+.acn-collection-body:focus-visible {
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--pn-accent);
 }
 
 .acn-collection-title {
@@ -490,6 +497,118 @@
 .acn-collection-count,
 .acn-collection-updated {
   color: var(--pn-text-muted);
+}
+
+.acn-collection-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acn-collection-detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 4px 2px;
+}
+
+.acn-collection-back-button {
+  height: 26px;
+  flex: 0 0 auto;
+  padding: 0 8px;
+  color: var(--pn-text);
+  background: var(--pn-bg-elevated);
+  border: 1px solid var(--pn-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.acn-collection-back-button:hover {
+  border-color: var(--pn-accent);
+}
+
+.acn-collection-detail-title-wrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.acn-collection-detail-title {
+  overflow: hidden;
+  color: var(--pn-text);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acn-collection-detail-count {
+  margin-top: 3px;
+  color: var(--pn-text-muted);
+  font-size: 12px;
+}
+
+.acn-saved-conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.acn-saved-conversation-item {
+  padding: 10px;
+  color: var(--pn-text);
+  background: var(--pn-bg);
+  border: 1px solid var(--pn-border);
+  border-radius: 8px;
+  cursor: default;
+}
+
+.acn-saved-conversation-title {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acn-saved-conversation-meta {
+  margin-top: 4px;
+  color: var(--pn-text-muted);
+  font-size: 12px;
+}
+
+.acn-saved-conversation-snippet {
+  margin-top: 8px;
+  color: var(--pn-text);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.acn-saved-conversation-url {
+  margin-top: 8px;
+  overflow: hidden;
+  color: var(--pn-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acn-collection-detail-empty {
+  padding: 18px 12px;
+  color: var(--pn-text-muted);
+  background: var(--pn-bg-elevated);
+  border: 1px solid var(--pn-border);
+  border-radius: 8px;
+}
+
+.acn-collection-detail-empty-title {
+  margin-bottom: 4px;
+  color: var(--pn-text);
+  font-weight: 700;
+}
+
+.acn-collection-detail-empty-text {
+  font-size: 12px;
 }
 
 .acn-compact-timeline {

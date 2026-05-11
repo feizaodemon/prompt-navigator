@@ -39,10 +39,13 @@
   let promptTab = null;
   let collectionsTab = null;
   let collectionsView = null;
+  let collectionsHeader = null;
   let collectionNameInput = null;
   let collectionStatus = null;
   let collectionList = null;
   let collectionsEmpty = null;
+  let collectionDetail = null;
+  let selectedCollectionId = "";
   let activePanelView = VIEW_PROMPTS;
   let collectionsRenderToken = 0;
   let compactTooltip = null;
@@ -206,7 +209,7 @@
     collectionsView.className = "acn-collections-view";
     collectionsView.hidden = true;
 
-    const collectionsHeader = document.createElement("div");
+    collectionsHeader = document.createElement("div");
     collectionsHeader.className = "acn-collections-header";
 
     const collectionsTitle = document.createElement("div");
@@ -257,7 +260,11 @@
     collectionList = document.createElement("div");
     collectionList.className = "acn-collection-list";
 
-    collectionsView.append(collectionsHeader, collectionStatus, collectionsEmpty, collectionList);
+    collectionDetail = document.createElement("div");
+    collectionDetail.className = "acn-collection-detail";
+    collectionDetail.hidden = true;
+
+    collectionsView.append(collectionsHeader, collectionStatus, collectionsEmpty, collectionList, collectionDetail);
 
     compactHeader.append(modeToggleButton);
     panel.append(panelHeader, meta, viewTabs, searchWrap, pinnedSection, list, emptyState, collectionsView);
@@ -520,14 +527,20 @@
   }
 
   function renderCollectionsView() {
-    if (!collectionsView || !collectionList || !collectionsEmpty) {
+    if (!collectionsView || !collectionList || !collectionsEmpty || !collectionDetail) {
       return;
     }
 
     const renderToken = collectionsRenderToken + 1;
     collectionsRenderToken = renderToken;
     collectionList.textContent = "";
+    collectionList.hidden = false;
+    collectionDetail.textContent = "";
+    collectionDetail.hidden = true;
     collectionsEmpty.hidden = false;
+    if (collectionsHeader) {
+      collectionsHeader.hidden = false;
+    }
 
     loadCollectionsState().then((state) => {
       if (renderToken !== collectionsRenderToken) {
@@ -540,6 +553,23 @@
         .filter(Boolean);
 
       collectionList.textContent = "";
+      collectionDetail.textContent = "";
+
+      if (selectedCollectionId) {
+        const selectedCollection = normalizedState.collectionsById[selectedCollectionId];
+        if (selectedCollection) {
+          renderCollectionDetailView(selectedCollection, normalizedState);
+          return;
+        }
+
+        selectedCollectionId = "";
+      }
+
+      if (collectionsHeader) {
+        collectionsHeader.hidden = false;
+      }
+      collectionList.hidden = false;
+      collectionDetail.hidden = true;
       collectionsEmpty.hidden = collections.length > 0;
 
       collections.forEach((collection) => {
@@ -552,7 +582,13 @@
       }
 
       collectionList.textContent = "";
+      collectionList.hidden = false;
+      collectionDetail.textContent = "";
+      collectionDetail.hidden = true;
       collectionsEmpty.hidden = false;
+      if (collectionsHeader) {
+        collectionsHeader.hidden = false;
+      }
     });
   }
 
@@ -600,6 +636,16 @@
 
     const body = document.createElement("div");
     body.className = "acn-collection-body";
+    body.tabIndex = 0;
+    body.setAttribute("role", "button");
+    body.setAttribute("aria-label", `View ${collection.name || "Untitled collection"}`);
+    body.addEventListener("click", () => showCollectionDetail(collection.id));
+    body.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showCollectionDetail(collection.id);
+      }
+    });
 
     const title = document.createElement("div");
     title.className = "acn-collection-title";
@@ -628,7 +674,10 @@
     action.className = "acn-collection-action";
     action.type = "button";
     action.textContent = "Add current";
-    action.addEventListener("click", () => addCurrentConversationToCollection(collection.id, action));
+    action.addEventListener("click", (event) => {
+      event.stopPropagation();
+      addCurrentConversationToCollection(collection.id, action);
+    });
 
     const conversationMetadata = getCurrentConversationMetadata();
     const currentConversationId = generateSavedConversationId(conversationMetadata);
@@ -639,6 +688,117 @@
     }
 
     item.append(body, action);
+    return item;
+  }
+
+  function showCollectionDetail(collectionId) {
+    selectedCollectionId = collectionId || "";
+    renderCollectionsView();
+  }
+
+  function showCollectionList() {
+    selectedCollectionId = "";
+    renderCollectionsView();
+  }
+
+  function renderCollectionDetailView(collection, state) {
+    if (!collectionDetail || !collectionList || !collectionsEmpty) {
+      return;
+    }
+
+    if (collectionsHeader) {
+      collectionsHeader.hidden = true;
+    }
+    collectionList.hidden = true;
+    collectionsEmpty.hidden = true;
+    collectionDetail.hidden = false;
+    collectionDetail.textContent = "";
+
+    const header = document.createElement("div");
+    header.className = "acn-collection-detail-header";
+
+    const backButton = document.createElement("button");
+    backButton.className = "acn-collection-back-button";
+    backButton.type = "button";
+    backButton.textContent = "Back";
+    backButton.addEventListener("click", showCollectionList);
+
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "acn-collection-detail-title-wrap";
+
+    const title = document.createElement("div");
+    title.className = "acn-collection-detail-title";
+    title.textContent = collection.name || "Untitled collection";
+
+    const conversationIds = Array.isArray(collection.conversationIds) ? collection.conversationIds : [];
+    const savedConversations = conversationIds
+      .map((conversationId) => state.savedConversationsById[conversationId])
+      .filter(Boolean);
+    const count = document.createElement("div");
+    count.className = "acn-collection-detail-count";
+    count.textContent = `${savedConversations.length} ${savedConversations.length === 1 ? "conversation" : "conversations"}`;
+
+    titleWrap.append(title, count);
+    header.append(backButton, titleWrap);
+
+    const savedConversationList = document.createElement("div");
+    savedConversationList.className = "acn-saved-conversation-list";
+
+    if (savedConversations.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "acn-collection-detail-empty";
+      const emptyTitle = document.createElement("div");
+      emptyTitle.className = "acn-collection-detail-empty-title";
+      emptyTitle.textContent = "No conversations in this collection yet";
+      const emptyText = document.createElement("div");
+      emptyText.className = "acn-collection-detail-empty-text";
+      emptyText.textContent = "Back to Collections and use Add current to save this conversation.";
+      empty.append(emptyTitle, emptyText);
+      collectionDetail.append(header, empty);
+      return;
+    }
+
+    savedConversations.forEach((savedConversation) => {
+      savedConversationList.appendChild(createSavedConversationItem(savedConversation));
+    });
+
+    collectionDetail.append(header, savedConversationList);
+  }
+
+  function createSavedConversationItem(savedConversation) {
+    const item = document.createElement("div");
+    item.className = "acn-saved-conversation-item";
+
+    const userEditedTitle = savedConversation.userEditedTitle && savedConversation.userEditedTitle.trim();
+    const titleText = userEditedTitle || savedConversation.sourceTitle || savedConversation.title || "Untitled conversation";
+    const title = document.createElement("div");
+    title.className = "acn-saved-conversation-title";
+    title.textContent = titleText;
+
+    const meta = document.createElement("div");
+    meta.className = "acn-saved-conversation-meta";
+    const metadataText = formatSavedConversationMetadata(savedConversation);
+    meta.textContent = metadataText
+      ? `${formatSavedConversationPlatform(savedConversation.platform)} · ${metadataText}`
+      : formatSavedConversationPlatform(savedConversation.platform);
+
+    item.append(title, meta);
+
+    if (savedConversation.snippet) {
+      const snippet = document.createElement("div");
+      snippet.className = "acn-saved-conversation-snippet";
+      snippet.textContent = savedConversation.snippet;
+      item.appendChild(snippet);
+    }
+
+    if (savedConversation.conversationUrl) {
+      const url = document.createElement("div");
+      url.className = "acn-saved-conversation-url";
+      url.title = savedConversation.conversationUrl;
+      url.textContent = shortenConversationUrl(savedConversation.conversationUrl);
+      item.appendChild(url);
+    }
+
     return item;
   }
 
@@ -695,6 +855,47 @@
     }
 
     return date.toLocaleDateString();
+  }
+
+  function formatSavedConversationPlatform(platform) {
+    return platform === "chatgpt" ? "ChatGPT" : "ChatGPT";
+  }
+
+  function formatSavedConversationMetadata(savedConversation) {
+    const visited = formatSavedConversationDate(savedConversation.lastVisitedAt);
+    if (visited) {
+      return `Visited ${visited}`;
+    }
+
+    const updated = formatSavedConversationDate(savedConversation.updatedAt);
+    if (updated) {
+      return `Updated ${updated}`;
+    }
+
+    const added = formatSavedConversationDate(savedConversation.addedAt);
+    return added ? `Added ${added}` : "";
+  }
+
+  function formatSavedConversationDate(value) {
+    if (!value) {
+      return "";
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    return date.toLocaleDateString();
+  }
+
+  function shortenConversationUrl(url) {
+    try {
+      const parsedUrl = new URL(url);
+      return `${parsedUrl.hostname}${parsedUrl.pathname}`;
+    } catch (error) {
+      return truncateText(url, 72);
+    }
   }
 
   function renderPinnedPrompts(pinnedRecords, messagesByKey) {
