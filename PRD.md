@@ -108,16 +108,17 @@ Gemini Voyager 的核心产品结构可以理解为：
 - 搜索 prompt
 - 固定重要 prompt
 
-### 第二层：Conversation Export
+### 第二层：Conversation Collections
 
-目标：让用户可以保存和复用对话结构。
+目标：让用户可以按主题组织多个 ChatGPT conversations / threads，并快速回到原始对话。
 
 功能：
 
-- 导出 prompt 时间轴为 Markdown
-- 导出完整对话为 Markdown
-- 导出 JSON
-- 复制当前 prompt map
+- 创建 collection / folder / favorites group
+- 将当前 conversation 加入 collection
+- 查看 collection 内的 saved conversations
+- 点击 saved conversation 打开原始 conversation URL
+- 本地保存 collection 和 conversation 组织信息
 
 ### 第三层：Prompt Vault
 
@@ -131,16 +132,16 @@ Gemini Voyager 的核心产品结构可以理解为：
 - 搜索 prompt
 - 一键复制 prompt
 
-### 第四层：Conversation Organization
+### 第四层：Conversation Export
 
-目标：让用户可以按项目或主题管理大量 AI 对话。
+目标：让用户可以在后续版本中导出和备份对话结构。
 
 功能：
 
-- 文件夹管理
-- 对话归类
-- 项目标签
-- 本地保存组织信息
+- 导出 prompt 时间轴为 Markdown
+- 导出完整对话为 Markdown
+- 导出 JSON
+- 复制当前 prompt map
 
 ### 第五层：Multi-platform Adapter
 
@@ -745,18 +746,59 @@ DeepSeek 暂缓，后续单独开发 adapter。
 
 ---
 
-## V3：导出功能
+## V3：Topic-based Conversation Collections
 
 核心问题：
 
-用户需要保存或复用对话结构。
+用户需要把同一主题下的多个 ChatGPT conversations / threads 归到同一个 collection / folder / favorites group 中，之后可以快速查看并跳转回原始对话。
 
-计划功能：
+示例 collection：
 
-* 导出 prompt 时间轴为 Markdown
-* 导出完整对话为 Markdown
-* 导出 JSON
-* 一键复制 prompt map
+* Prompt Navigator
+* COLMAG Seminar
+* gp_torque_compensation
+* RoboDK Drawing
+* TUM / RWTH Documents
+
+V3 MVP 范围：
+
+* Create collection
+* Rename collection
+* Delete collection
+* Add current conversation to a collection
+* Remove conversation from a collection
+* Show collections list
+* Show conversations inside selected collection
+* Click saved conversation to open original conversation URL
+* Local persistence only
+
+V3 MVP 不包含：
+
+* V3 不是导出功能
+* 收藏单个 prompt
+* 收藏单条 assistant answer
+* Prompt vault
+* Cloud sync
+* Backend database
+* User account system
+* Cross-device sync
+* AI auto-classification
+* Tags
+* Nested folders
+* Export / import
+* Major timeline navigation rewrite
+* Major compact timeline redesign
+* Full DeepSeek support, unless later architecture safely supports it
+
+后续版本拆分：
+
+* V3A: Conversation collections architecture
+* V3B: Collection storage schema
+* V3C: Collections UI shell
+* V3D: Add current conversation to collection
+* V3E: Collection detail and open conversation
+* V3F: Manage collections and saved conversations
+* V3G: Polish and regression tests
 
 ---
 
@@ -777,19 +819,19 @@ DeepSeek 暂缓，后续单独开发 adapter。
 
 ---
 
-## V5：文件夹与对话管理
+## V5：高级对话组织
 
 核心问题：
 
-用户需要按项目或主题组织大量 AI 对话。
+用户可能需要在 V3 conversation collections 基础上继续增强对话组织能力。
 
 计划功能：
 
-* 自定义文件夹
-* 将对话加入文件夹
-* 重命名文件夹
-* 移动对话
-* 本地保存对话组织信息
+* 更复杂的 collection 管理
+* 可选标签
+* 可选嵌套组织
+* 更丰富的排序和筛选
+* 与未来导出 / 备份能力衔接
 
 ---
 
@@ -1137,9 +1179,9 @@ Codex 生成的 `README.md` 至少应包含以下内容：
 第一步：实现并稳定 ChatGPT 的 Prompt Timeline
 第二步：修复 ChatGPT 的 DOM 识别和侧边栏 UX 问题
 第三步：增加搜索和 pin
-第四步：增加 Markdown / JSON 导出
+第四步：增加 V3 topic-based conversation collections
 第五步：增加 Prompt Vault
-第六步：增加文件夹管理
+第六步：评估高级对话组织和导出 / 导入
 第七步：考虑备份与可选同步
 第八步：单独研究 DeepSeek 的历史消息加载机制并恢复 DeepSeek adapter
 ```
