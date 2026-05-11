@@ -799,6 +799,27 @@
       item.appendChild(url);
     }
 
+    const actions = document.createElement("div");
+    actions.className = "acn-saved-conversation-actions";
+    const openButton = document.createElement("button");
+    openButton.className = "acn-saved-conversation-open";
+    openButton.type = "button";
+    openButton.textContent = "Open";
+
+    if (isSafeConversationUrl(savedConversation.conversationUrl)) {
+      openButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openSavedConversationUrl(savedConversation);
+      });
+    } else {
+      openButton.disabled = true;
+      openButton.classList.add("acn-saved-conversation-open-disabled");
+      openButton.title = "Conversation URL unavailable";
+    }
+
+    actions.appendChild(openButton);
+    item.appendChild(actions);
+
     return item;
   }
 
@@ -896,6 +917,35 @@
     } catch (error) {
       return truncateText(url, 72);
     }
+  }
+
+  function isSafeConversationUrl(rawUrl) {
+    if (!rawUrl || typeof rawUrl !== "string") {
+      return false;
+    }
+
+    try {
+      const url = new URL(rawUrl);
+      return (
+        url.protocol === "https:" &&
+        url.hostname === "chatgpt.com" &&
+        url.pathname.startsWith("/")
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function openSavedConversationUrl(savedConversation) {
+    const safeUrl = savedConversation && isSafeConversationUrl(savedConversation.conversationUrl)
+      ? savedConversation.conversationUrl
+      : "";
+    if (!safeUrl) {
+      return false;
+    }
+
+    window.open(safeUrl, "_blank", "noopener,noreferrer");
+    return true;
   }
 
   function renderPinnedPrompts(pinnedRecords, messagesByKey) {

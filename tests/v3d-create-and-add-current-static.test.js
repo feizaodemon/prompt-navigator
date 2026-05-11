@@ -38,7 +38,6 @@ assert(!content.includes("aiConversationNavigatorSavedConversation"), "V3D must 
 
 assert(!content.includes("renameCollection"), "V3D must not implement rename collection");
 assert(!content.includes("deleteCollection"), "V3D must not implement delete collection");
-assert(!content.includes("openSavedConversation"), "V3D must not implement saved conversation URL opening");
 assert.deepStrictEqual(manifest.content_scripts[0].matches, ["https://chatgpt.com/*"]);
 assert(!JSON.stringify(manifest).includes("chat.deepseek.com"), "manifest must not enable DeepSeek");
 

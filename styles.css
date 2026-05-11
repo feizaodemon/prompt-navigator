@@ -593,6 +593,36 @@
   white-space: nowrap;
 }
 
+.acn-saved-conversation-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.acn-saved-conversation-open {
+  height: 26px;
+  flex: 0 0 auto;
+  padding: 0 8px;
+  color: var(--pn-text);
+  background: var(--pn-bg-elevated);
+  border: 1px solid var(--pn-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.acn-saved-conversation-open:hover {
+  border-color: var(--pn-accent);
+}
+
+.acn-saved-conversation-open:disabled,
+.acn-saved-conversation-open-disabled {
+  color: var(--pn-text-muted);
+  cursor: default;
+  opacity: 0.72;
+}
+
 .acn-collection-detail-empty {
   padding: 18px 12px;
   color: var(--pn-text-muted);

@@ -13,8 +13,6 @@ assert(content.includes("acn-collection-detail"), "content.js should create the 
 assert(content.includes("acn-collection-back-button"), "detail view should include a Back button");
 assert(content.includes("acn-saved-conversation-list"), "detail view should render a saved conversation list");
 
-assert(!content.includes("openSavedConversation"), "V3E must not implement saved conversation URL opening");
-assert(!content.includes("window.open("), "V3E must not open saved conversation URLs");
 assert(!content.includes("location.href = savedConversation"), "V3E must not navigate to saved conversation URLs");
 assert(!content.includes("renameCollection"), "V3E must not implement rename collection");
 assert(!content.includes("deleteCollection"), "V3E must not implement delete collection");
