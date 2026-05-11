@@ -68,6 +68,15 @@ compact timeline 顶部有一个小按钮，用于打开搜索和完整 prompt l
 
 DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全部存在于当前 DOM 中。因此当前扩展不会在 DeepSeek 页面运行，也不会启用 DeepSeek adapter。
 
+## Roadmap
+
+- 当前稳定版本：V2G Direct scroll without reverse jump。
+- 当前稳定分支：`v2g-direct-scroll-navigation`。
+- V3 规划：`Topic-based Conversation Collections`，用于把同一主题下的多个 ChatGPT conversation / thread 加入用户自定义 collection，并从 collection 快速打开原始对话。
+- V3 不规划 prompt-level favorites、单条 assistant answer 收藏或 Prompt Vault。
+
+详细 roadmap 见 `docs/roadmap.md`，版本历史见 `docs/change_log.md`。
+
 ## 文件说明
 
 - `manifest.json`：Manifest V3 扩展配置，只匹配 `https://chatgpt.com/*`，包含 `storage` 权限。
