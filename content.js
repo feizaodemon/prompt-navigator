@@ -5,6 +5,7 @@
   const HIGHLIGHT_CLASS = "ai-conversation-navigator-target";
   const PINNED_STORAGE_KEY = "aiConversationNavigatorPinnedPrompts";
   const MODE_STORAGE_KEY = "aiConversationNavigatorMode";
+  const COLLECTIONS_STORAGE_KEY = "aiConversationNavigatorCollections";
   const MODE_EXPANDED = "expanded";
   const MODE_COMPACT = "compact";
   const MAX_PREVIEW_LENGTH = 50;
@@ -1216,6 +1217,315 @@
     }
 
     return chrome.storage.local;
+  }
+
+  function getCollectionsStorageKey() {
+    return COLLECTIONS_STORAGE_KEY;
+  }
+
+  function getDefaultCollectionsState() {
+    return {
+      schemaVersion: 1,
+      collectionsById: {},
+      savedConversationsById: {},
+      collectionOrder: []
+    };
+  }
+
+  function normalizeCollectionsState(rawState) {
+    const defaultState = getDefaultCollectionsState();
+    if (!rawState || typeof rawState !== "object") {
+      return defaultState;
+    }
+
+    const collectionsById = normalizeCollectionsById(rawState.collectionsById);
+    const savedConversationsById = normalizeSavedConversationsById(rawState.savedConversationsById);
+    const normalizedCollectionOrder = Array.isArray(rawState.collectionOrder)
+      ? rawState.collectionOrder.filter((id) => typeof id === "string" && collectionsById[id])
+      : Object.keys(collectionsById);
+    const collectionOrder = uniqueStrings([...normalizedCollectionOrder, ...Object.keys(collectionsById)]);
+
+    Object.values(collectionsById).forEach((collection) => {
+      collection.conversationIds = collection.conversationIds.filter((id) => savedConversationsById[id]);
+    });
+
+    Object.values(savedConversationsById).forEach((conversation) => {
+      conversation.collectionIds = conversation.collectionIds.filter((id) => collectionsById[id]);
+    });
+
+    return {
+      schemaVersion: 1,
+      collectionsById,
+      savedConversationsById,
+      collectionOrder
+    };
+  }
+
+  function normalizeCollectionsById(collectionsById) {
+    if (!collectionsById || typeof collectionsById !== "object" || Array.isArray(collectionsById)) {
+      return {};
+    }
+
+    return Object.entries(collectionsById).reduce((normalized, [id, collection]) => {
+      if (!id || !collection || typeof collection !== "object" || Array.isArray(collection)) {
+        return normalized;
+      }
+
+      normalized[id] = {
+        id,
+        name: typeof collection.name === "string" && collection.name.trim() ? collection.name.trim() : "Untitled collection",
+        description: typeof collection.description === "string" ? collection.description : "",
+        createdAt: typeof collection.createdAt === "string" ? collection.createdAt : new Date().toISOString(),
+        updatedAt: typeof collection.updatedAt === "string" ? collection.updatedAt : new Date().toISOString(),
+        conversationIds: Array.isArray(collection.conversationIds)
+          ? uniqueStrings(collection.conversationIds)
+          : []
+      };
+
+      return normalized;
+    }, {});
+  }
+
+  function normalizeSavedConversationsById(savedConversationsById) {
+    if (!savedConversationsById || typeof savedConversationsById !== "object" || Array.isArray(savedConversationsById)) {
+      return {};
+    }
+
+    return Object.entries(savedConversationsById).reduce((normalized, [id, conversation]) => {
+      if (!id || !conversation || typeof conversation !== "object" || Array.isArray(conversation)) {
+        return normalized;
+      }
+
+      normalized[id] = {
+        id,
+        platform: conversation.platform === "chatgpt" ? "chatgpt" : "chatgpt",
+        conversationUrl: typeof conversation.conversationUrl === "string" ? conversation.conversationUrl : "",
+        conversationId: typeof conversation.conversationId === "string" ? conversation.conversationId : "",
+        title: typeof conversation.title === "string" && conversation.title.trim()
+          ? conversation.title.trim()
+          : "Untitled ChatGPT conversation",
+        sourceTitle: typeof conversation.sourceTitle === "string" ? conversation.sourceTitle : "",
+        userEditedTitle: typeof conversation.userEditedTitle === "string" ? conversation.userEditedTitle : "",
+        snippet: typeof conversation.snippet === "string" ? truncateText(conversation.snippet, 120) : "",
+        addedAt: typeof conversation.addedAt === "string" ? conversation.addedAt : new Date().toISOString(),
+        updatedAt: typeof conversation.updatedAt === "string" ? conversation.updatedAt : new Date().toISOString(),
+        lastVisitedAt: typeof conversation.lastVisitedAt === "string" ? conversation.lastVisitedAt : "",
+        collectionIds: Array.isArray(conversation.collectionIds)
+          ? uniqueStrings(conversation.collectionIds)
+          : []
+      };
+
+      return normalized;
+    }, {});
+  }
+
+  function loadCollectionsState() {
+    return new Promise((resolve) => {
+      const storage = getLocalStorageApi();
+      if (!storage) {
+        resolve(getDefaultCollectionsState());
+        return;
+      }
+
+      try {
+        storage.get([COLLECTIONS_STORAGE_KEY], (result) => {
+          resolve(normalizeCollectionsState(result && result[COLLECTIONS_STORAGE_KEY]));
+        });
+      } catch (error) {
+        debugNavigator("[PromptNavigator] collections load failed", error);
+        resolve(getDefaultCollectionsState());
+      }
+    });
+  }
+
+  function saveCollectionsState(state) {
+    const storage = getLocalStorageApi();
+    if (!storage) {
+      return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+      try {
+        storage.set(
+          {
+            [COLLECTIONS_STORAGE_KEY]: normalizeCollectionsState(state)
+          },
+          () => resolve(true)
+        );
+      } catch (error) {
+        debugNavigator("[PromptNavigator] collections save failed", error);
+        resolve(false);
+      }
+    });
+  }
+
+  function generateCollectionId() {
+    return `collection_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function generateSavedConversationId(metadata) {
+    const safeMetadata = metadata || {};
+    const platform = safeMetadata.platform || "chatgpt";
+    if (safeMetadata.conversationId) {
+      return `conversation_${platform}_${safeMetadata.conversationId}`;
+    }
+
+    return `conversation_${platform}_${hashString(safeMetadata.conversationUrl)}`;
+  }
+
+  function hashString(input) {
+    const text = String(input || "");
+    let hash = 0;
+
+    for (let index = 0; index < text.length; index += 1) {
+      hash = (hash << 5) - hash + text.charCodeAt(index);
+      hash |= 0;
+    }
+
+    return Math.abs(hash).toString(36);
+  }
+
+  function getCanonicalConversationUrl(urlOrLocation) {
+    try {
+      const source = urlOrLocation || location.href;
+      const url = typeof source === "string" ? new URL(source, location.origin) : new URL(source.href);
+      return `${url.origin}${url.pathname}`;
+    } catch (error) {
+      return getConversationKey();
+    }
+  }
+
+  function parseChatGPTConversationId(urlOrPathname) {
+    try {
+      const pathname = String(urlOrPathname || location.pathname).startsWith("/")
+        ? String(urlOrPathname || location.pathname)
+        : new URL(String(urlOrPathname), location.origin).pathname;
+      const match = pathname.match(/^\/c\/([^/?#]+)/);
+      return match ? decodeURIComponent(match[1]) : "";
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function getCurrentConversationMetadata() {
+    const conversationUrl = getCanonicalConversationUrl();
+    const sourceTitle = getCleanDocumentTitle();
+    const firstPrompt = currentPrompts[0];
+
+    return {
+      platform: "chatgpt",
+      conversationUrl,
+      conversationId: parseChatGPTConversationId(conversationUrl),
+      title: sourceTitle || "Untitled ChatGPT conversation",
+      sourceTitle,
+      snippet: firstPrompt && firstPrompt.text ? truncateText(firstPrompt.text, 120) : ""
+    };
+  }
+
+  function createCollectionDraft(name) {
+    const now = new Date().toISOString();
+    return {
+      id: generateCollectionId(),
+      name: typeof name === "string" && name.trim() ? name.trim() : "Untitled collection",
+      description: "",
+      createdAt: now,
+      updatedAt: now,
+      conversationIds: []
+    };
+  }
+
+  function createSavedConversationDraft(metadata) {
+    const safeMetadata = metadata || {};
+    const now = new Date().toISOString();
+    const draft = {
+      id: "",
+      platform: safeMetadata.platform === "chatgpt" ? "chatgpt" : "chatgpt",
+      conversationUrl: safeMetadata.conversationUrl || getCanonicalConversationUrl(),
+      conversationId: safeMetadata.conversationId || "",
+      title: safeMetadata.title || "Untitled ChatGPT conversation",
+      sourceTitle: safeMetadata.sourceTitle || "",
+      userEditedTitle: "",
+      snippet: safeMetadata.snippet ? truncateText(safeMetadata.snippet, 120) : "",
+      addedAt: now,
+      updatedAt: now,
+      lastVisitedAt: now,
+      collectionIds: []
+    };
+    draft.id = generateSavedConversationId(draft);
+
+    return draft;
+  }
+
+  function addConversationToCollectionState(state, collectionId, conversationMetadata) {
+    const nextState = normalizeCollectionsState(state);
+    const collection = nextState.collectionsById[collectionId];
+    if (!collection) {
+      return nextState;
+    }
+
+    const draft = createSavedConversationDraft(conversationMetadata);
+    const existingConversation = nextState.savedConversationsById[draft.id];
+    const savedConversation = existingConversation
+      ? { ...existingConversation, ...draft, addedAt: existingConversation.addedAt, collectionIds: existingConversation.collectionIds }
+      : draft;
+    const savedConversationId = savedConversation.id;
+
+    if (!collection.conversationIds.includes(savedConversationId)) {
+      collection.conversationIds.push(savedConversationId);
+      collection.updatedAt = new Date().toISOString();
+    }
+
+    if (!savedConversation.collectionIds.includes(collectionId)) {
+      savedConversation.collectionIds = [...savedConversation.collectionIds, collectionId];
+    }
+
+    savedConversation.updatedAt = new Date().toISOString();
+    savedConversation.lastVisitedAt = new Date().toISOString();
+    nextState.savedConversationsById[savedConversationId] = savedConversation;
+
+    return nextState;
+  }
+
+  function removeConversationFromCollectionState(state, collectionId, savedConversationId) {
+    const nextState = normalizeCollectionsState(state);
+    const collection = nextState.collectionsById[collectionId];
+    const savedConversation = nextState.savedConversationsById[savedConversationId];
+
+    if (collection) {
+      collection.conversationIds = collection.conversationIds.filter((id) => id !== savedConversationId);
+      collection.updatedAt = new Date().toISOString();
+    }
+
+    if (savedConversation) {
+      savedConversation.collectionIds = savedConversation.collectionIds.filter((id) => id !== collectionId);
+      savedConversation.updatedAt = new Date().toISOString();
+    }
+
+    return nextState;
+  }
+
+  function getCleanDocumentTitle() {
+    if (typeof document === "undefined" || !document.title) {
+      return "";
+    }
+
+    return document.title
+      .replace(/\s*[-|]\s*ChatGPT\s*$/i, "")
+      .replace(/^\s*ChatGPT\s*[-|]\s*/i, "")
+      .trim();
+  }
+
+  function uniqueStrings(values) {
+    return [...new Set(values.filter((value) => typeof value === "string" && value))];
+  }
+
+  function truncateText(text, maxLength) {
+    const normalizedText = String(text || "").replace(/\s+/g, " ").trim();
+    if (normalizedText.length <= maxLength) {
+      return normalizedText;
+    }
+
+    return normalizedText.slice(0, maxLength - 1).trimEnd();
   }
 
   function getCurrentPinnedRecords() {
