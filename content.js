@@ -18,6 +18,8 @@
   const PROGRAMMATIC_SCROLL_LOCK_MS = 600;
   const CORRECTION_CHECK_DELAY_MS = 250;
   const FINAL_CORRECTION_CHECK_DELAY_MS = 600;
+  const SCROLL_CORRECTION_THRESHOLD_PX = 12;
+  const MAX_SCROLL_CORRECTION_PASSES = 2;
   const DEBUG_NAVIGATOR = false;
 
   let activeAdapter = null;
@@ -717,6 +719,10 @@
     isProgrammaticScrolling = true;
     window.clearTimeout(programmaticScrollTimer);
     window.clearTimeout(updateTimer);
+    if (activePromptFrame !== null) {
+      window.cancelAnimationFrame(activePromptFrame);
+      activePromptFrame = null;
+    }
     delayedUpdateAfterProgrammaticScroll = true;
     programmaticScrollTimer = window.setTimeout(() => {
       isProgrammaticScrolling = false;
@@ -733,66 +739,102 @@
       return;
     }
 
-    element.scrollIntoView({
-      behavior: "auto",
-      block: "center"
-    });
-    debugNavigator("[PromptNavigator] first positioning", {
+    const correctionState = {
+      passes: 0
+    };
+    manualScrollToElement(element, true);
+    debugNavigator("[PromptNavigator] manual positioning", {
       originalIndex,
       rectTop: element.getBoundingClientRect().top
     });
 
+    const correctLatestPrompt = (reason) => {
+      if (correctionState.passes >= MAX_SCROLL_CORRECTION_PASSES) {
+        return;
+      }
+
+      const latestPrompt = resolvePromptByOriginalIndex(originalIndex);
+      const latestElement = latestPrompt && latestPrompt.element ? latestPrompt.element : element;
+      const corrected = manualScrollToElement(latestElement, false);
+
+      if (corrected) {
+        correctionState.passes += 1;
+      }
+
+      debugNavigator("[PromptNavigator] precise positioning", {
+        originalIndex,
+        reason,
+        rectTop: latestElement.getBoundingClientRect().top,
+        corrected,
+        correctionPasses: correctionState.passes
+      });
+
+      return latestElement;
+    };
+
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        const latestPrompt = resolvePromptByOriginalIndex(originalIndex);
-        const latestElement = latestPrompt && latestPrompt.element ? latestPrompt.element : element;
-
-        preciseScrollToElement(latestElement);
-        debugNavigator("[PromptNavigator] precise positioning", {
-          originalIndex,
-          rectTop: latestElement.getBoundingClientRect().top
-        });
+        const latestElement = correctLatestPrompt("layout") || element;
 
         window.setTimeout(
-          () => verifyPromptVisible(latestElement, originalIndex),
+          () => verifyPromptVisible(latestElement, originalIndex, correctionState),
           CORRECTION_CHECK_DELAY_MS
         );
         window.setTimeout(
-          () => verifyPromptVisible(latestElement, originalIndex),
+          () => verifyPromptVisible(latestElement, originalIndex, correctionState),
           FINAL_CORRECTION_CHECK_DELAY_MS
         );
       });
     });
   }
 
-  function preciseScrollToElement(element) {
+  function manualScrollToElement(element, force) {
+    if (!element || !element.isConnected) {
+      return false;
+    }
+
     const scrollContainer = getScrollContainer();
     const offset = COMPACT_SCROLL_OFFSET_PX;
     const rect = element.getBoundingClientRect();
+    let currentTop = 0;
+    let targetTop = 0;
 
     if (isWindowScrollContainer(scrollContainer)) {
-      const absoluteTop = rect.top + window.scrollY;
+      currentTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      targetTop = Math.max(rect.top + currentTop - offset, 0);
+      if (!force && Math.abs(targetTop - currentTop) < SCROLL_CORRECTION_THRESHOLD_PX) {
+        return false;
+      }
+
       window.scrollTo({
-        top: Math.max(absoluteTop - offset, 0),
-        behavior: "smooth"
+        top: targetTop,
+        behavior: "auto"
       });
-      return;
+      return true;
     }
 
     const containerRect = scrollContainer.getBoundingClientRect();
-    const targetTop = scrollContainer.scrollTop + rect.top - containerRect.top - offset;
+    currentTop = scrollContainer.scrollTop;
+    targetTop = Math.max(currentTop + rect.top - containerRect.top - offset, 0);
+    if (!force && Math.abs(targetTop - currentTop) < SCROLL_CORRECTION_THRESHOLD_PX) {
+      return false;
+    }
+
     scrollContainer.scrollTo({
-      top: Math.max(targetTop, 0),
-      behavior: "smooth"
+      top: targetTop,
+      behavior: "auto"
     });
+    return true;
   }
 
-  function verifyPromptVisible(element, originalIndex) {
+  function verifyPromptVisible(element, originalIndex, correctionState) {
     if (!isProgrammaticScrolling || !element || !element.isConnected) {
       return;
     }
 
-    const rect = element.getBoundingClientRect();
+    const latestPrompt = resolvePromptByOriginalIndex(originalIndex);
+    const latestElement = latestPrompt && latestPrompt.element ? latestPrompt.element : element;
+    const rect = latestElement.getBoundingClientRect();
     const targetBandTop = window.innerHeight * 0.15;
     const targetBandBottom = window.innerHeight * 0.55;
     const corrected = rect.top < targetBandTop || rect.top > targetBandBottom;
@@ -802,11 +844,15 @@
       rectTop: rect.top,
       targetBandTop,
       targetBandBottom,
-      corrected
+      corrected,
+      correctionPasses: correctionState.passes
     });
 
-    if (corrected) {
-      preciseScrollToElement(element);
+    if (corrected && correctionState.passes < MAX_SCROLL_CORRECTION_PASSES) {
+      const didCorrect = manualScrollToElement(latestElement, false);
+      if (didCorrect) {
+        correctionState.passes += 1;
+      }
     }
   }
 
@@ -866,6 +912,10 @@
   }
 
   function scheduleActivePromptUpdate() {
+    if (isProgrammaticScrolling) {
+      return;
+    }
+
     if (activePromptFrame !== null) {
       return;
     }
