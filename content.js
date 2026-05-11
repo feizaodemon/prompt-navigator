@@ -8,6 +8,8 @@
   const COLLECTIONS_STORAGE_KEY = "aiConversationNavigatorCollections";
   const MODE_EXPANDED = "expanded";
   const MODE_COMPACT = "compact";
+  const VIEW_PROMPTS = "prompts";
+  const VIEW_COLLECTIONS = "collections";
   const MAX_PREVIEW_LENGTH = 50;
   const UPDATE_DELAY_MS = 300;
   const HIGHLIGHT_DELAY_MS = 1600;
@@ -31,8 +33,16 @@
   let pinnedSection = null;
   let pinnedList = null;
   let emptyState = null;
+  let searchWrap = null;
   let searchInput = null;
   let modeToggleButton = null;
+  let promptTab = null;
+  let collectionsTab = null;
+  let collectionsView = null;
+  let collectionList = null;
+  let collectionsEmpty = null;
+  let activePanelView = VIEW_PROMPTS;
+  let collectionsRenderToken = 0;
   let compactTooltip = null;
   let compactTooltipFrame = null;
   let activePromptFrame = null;
@@ -145,7 +155,15 @@
     meta.className = "acn-meta";
     meta.textContent = activeAdapter.name;
 
-    const searchWrap = document.createElement("div");
+    const viewTabs = document.createElement("div");
+    viewTabs.className = "acn-view-tabs";
+    viewTabs.setAttribute("role", "tablist");
+
+    promptTab = createViewTab("Prompts", VIEW_PROMPTS);
+    collectionsTab = createViewTab("Collections", VIEW_COLLECTIONS);
+    viewTabs.append(promptTab, collectionsTab);
+
+    searchWrap = document.createElement("div");
     searchWrap.className = "acn-search";
 
     searchInput = document.createElement("input");
@@ -182,11 +200,103 @@
     emptyState.className = "acn-empty";
     emptyState.textContent = "暂无可用 prompt";
 
+    collectionsView = document.createElement("section");
+    collectionsView.className = "acn-collections-view";
+    collectionsView.hidden = true;
+
+    const collectionsHeader = document.createElement("div");
+    collectionsHeader.className = "acn-collections-header";
+
+    const collectionsTitle = document.createElement("div");
+    collectionsTitle.className = "acn-section-title";
+    collectionsTitle.textContent = "Collections";
+
+    const newCollectionButton = document.createElement("button");
+    newCollectionButton.className = "acn-new-collection-placeholder";
+    newCollectionButton.type = "button";
+    newCollectionButton.disabled = true;
+    newCollectionButton.title = "Future V3D action";
+    newCollectionButton.textContent = "New collection";
+
+    collectionsHeader.append(collectionsTitle, newCollectionButton);
+
+    collectionsEmpty = document.createElement("div");
+    collectionsEmpty.className = "acn-collections-empty";
+    collectionsEmpty.hidden = true;
+
+    const collectionsEmptyTitle = document.createElement("div");
+    collectionsEmptyTitle.className = "acn-collections-empty-title";
+    collectionsEmptyTitle.textContent = "No collections yet";
+
+    const collectionsEmptyText = document.createElement("div");
+    collectionsEmptyText.className = "acn-collections-empty-text";
+    collectionsEmptyText.textContent = "Collections will let you group related conversations by topic.";
+
+    collectionsEmpty.append(collectionsEmptyTitle, collectionsEmptyText);
+
+    collectionList = document.createElement("div");
+    collectionList.className = "acn-collection-list";
+
+    collectionsView.append(collectionsHeader, collectionsEmpty, collectionList);
+
     compactHeader.append(modeToggleButton);
-    panel.append(panelHeader, meta, searchWrap, pinnedSection, list, emptyState);
+    panel.append(panelHeader, meta, viewTabs, searchWrap, pinnedSection, list, emptyState, collectionsView);
     root.append(compactHeader, compactTimeline, panel);
     document.documentElement.appendChild(root);
     document.addEventListener("click", handleOutsidePanelClick);
+    setPanelView(VIEW_PROMPTS);
+  }
+
+  function createViewTab(label, view) {
+    const tab = document.createElement("button");
+    tab.className = "acn-view-tab";
+    tab.type = "button";
+    tab.setAttribute("role", "tab");
+    tab.dataset.view = view;
+    tab.textContent = label;
+    tab.addEventListener("click", () => setPanelView(view));
+    return tab;
+  }
+
+  function setPanelView(view) {
+    activePanelView = view === VIEW_COLLECTIONS ? VIEW_COLLECTIONS : VIEW_PROMPTS;
+    const showingCollections = activePanelView === VIEW_COLLECTIONS;
+
+    if (promptTab) {
+      promptTab.classList.toggle("acn-view-tab-active", !showingCollections);
+      promptTab.setAttribute("aria-selected", showingCollections ? "false" : "true");
+    }
+
+    if (collectionsTab) {
+      collectionsTab.classList.toggle("acn-view-tab-active", showingCollections);
+      collectionsTab.setAttribute("aria-selected", showingCollections ? "true" : "false");
+    }
+
+    if (searchWrap) {
+      searchWrap.hidden = showingCollections;
+    }
+
+    if (pinnedSection) {
+      pinnedSection.hidden = showingCollections || !pinnedList || pinnedList.children.length === 0;
+    }
+
+    if (list) {
+      list.hidden = showingCollections;
+    }
+
+    if (emptyState) {
+      emptyState.hidden = showingCollections || emptyState.hidden;
+    }
+
+    if (collectionsView) {
+      collectionsView.hidden = !showingCollections;
+    }
+
+    if (showingCollections) {
+      renderCollectionsView();
+    } else {
+      renderPromptList(false);
+    }
   }
 
   function togglePromptPanel() {
@@ -377,9 +487,85 @@
       list.scrollTop = previousScrollTop;
     }
 
+    if (activePanelView === VIEW_COLLECTIONS) {
+      searchWrap.hidden = true;
+      pinnedSection.hidden = true;
+      list.hidden = true;
+      emptyState.hidden = true;
+    }
+
     lastRenderedPromptCount = messages.length;
     attachActivePromptScrollListener();
     scheduleActivePromptUpdate();
+  }
+
+  function renderCollectionsView() {
+    if (!collectionsView || !collectionList || !collectionsEmpty) {
+      return;
+    }
+
+    const renderToken = collectionsRenderToken + 1;
+    collectionsRenderToken = renderToken;
+    collectionList.textContent = "";
+    collectionsEmpty.hidden = false;
+
+    loadCollectionsState().then((state) => {
+      if (renderToken !== collectionsRenderToken) {
+        return;
+      }
+
+      const normalizedState = normalizeCollectionsState(state);
+      const collections = normalizedState.collectionOrder
+        .map((collectionId) => normalizedState.collectionsById[collectionId])
+        .filter(Boolean);
+
+      collectionList.textContent = "";
+      collectionsEmpty.hidden = collections.length > 0;
+
+      collections.forEach((collection) => {
+        collectionList.appendChild(createCollectionItem(collection));
+      });
+    }).catch((error) => {
+      debugNavigator("[PromptNavigator] collections view render failed", error);
+      if (renderToken !== collectionsRenderToken) {
+        return;
+      }
+
+      collectionList.textContent = "";
+      collectionsEmpty.hidden = false;
+    });
+  }
+
+  function createCollectionItem(collection) {
+    const item = document.createElement("div");
+    item.className = "acn-collection-item";
+
+    const title = document.createElement("div");
+    title.className = "acn-collection-title";
+    title.textContent = collection.name || "Untitled collection";
+
+    const meta = document.createElement("div");
+    meta.className = "acn-collection-meta";
+    const conversationCount = collection.conversationIds.length;
+    const countText = `${conversationCount} ${conversationCount === 1 ? "conversation" : "conversations"}`;
+    const updatedAt = formatCollectionUpdatedAt(collection.updatedAt);
+    meta.textContent = updatedAt ? `${countText} · Updated ${updatedAt}` : countText;
+
+    item.append(title, meta);
+    return item;
+  }
+
+  function formatCollectionUpdatedAt(updatedAt) {
+    if (!updatedAt) {
+      return "";
+    }
+
+    const date = new Date(updatedAt);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    return date.toLocaleDateString();
   }
 
   function renderPinnedPrompts(pinnedRecords, messagesByKey) {
