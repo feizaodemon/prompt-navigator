@@ -15,6 +15,9 @@
   const COMPACT_DOT_EDGE_OFFSET_PERCENT = 2;
   const ACTIVE_PROMPT_VIEWPORT_RATIO = 0.35;
   const COMPACT_TOOLTIP_MAX_TEXT_LENGTH = 280;
+  const PROGRAMMATIC_SCROLL_LOCK_MS = 600;
+  const CORRECTION_CHECK_DELAY_MS = 250;
+  const FINAL_CORRECTION_CHECK_DELAY_MS = 600;
   const DEBUG_NAVIGATOR = false;
 
   let activeAdapter = null;
@@ -40,6 +43,9 @@
   let pinnedStore = {};
   let activePromptKey = null;
   let activePromptIndex = -1;
+  let isProgrammaticScrolling = false;
+  let programmaticScrollTimer = null;
+  let delayedUpdateAfterProgrammaticScroll = false;
   let currentPrompts = [];
   let navigatorMode = MODE_COMPACT;
   let panelOpen = false;
@@ -241,7 +247,16 @@
     debugNavigator("[PromptNavigator] scroll event fired", {
       scrollContainer: activeScrollContainer
     });
+
+    if (isProgrammaticScrolling) {
+      return;
+    }
+
     scheduleActivePromptUpdate();
+  }
+
+  function getScrollContainer() {
+    return activeScrollContainer || findScrollContainer();
   }
 
   function findScrollContainer() {
@@ -293,6 +308,11 @@
   }
 
   function scheduleUpdate() {
+    if (isProgrammaticScrolling) {
+      delayedUpdateAfterProgrammaticScroll = true;
+      return;
+    }
+
     window.clearTimeout(updateTimer);
     updateTimer = window.setTimeout(() => renderPromptList(true), UPDATE_DELAY_MS);
   }
@@ -304,6 +324,10 @@
 
   function findPromptById(promptId) {
     return currentPrompts.find((prompt) => prompt.id === promptId) || null;
+  }
+
+  function resolvePromptByOriginalIndex(originalIndex) {
+    return currentPrompts.find((prompt) => prompt.originalIndex === originalIndex) || null;
   }
 
   function renderPromptList(allowAutoScroll) {
@@ -460,9 +484,9 @@
     }
 
     if (source === "pinned") {
-      item.addEventListener("click", () => handlePromptClick(promptId, "pinned"));
+      item.addEventListener("click", () => handlePromptClick(promptId, "pinned", promptNumber));
     } else {
-      item.addEventListener("click", () => handlePromptClick(promptId));
+      item.addEventListener("click", () => handlePromptClick(promptId, "expanded", promptNumber));
     }
 
     item.addEventListener("keydown", (event) => {
@@ -506,7 +530,7 @@
       index: Number(dot.dataset.promptNumber),
       promptText: dot.dataset.promptPreview
     });
-    handlePromptClick(promptId);
+    handlePromptClick(promptId, "compact", Number(dot.dataset.promptNumber));
   }
 
   function handleCompactTimelineClick(event) {
@@ -517,7 +541,7 @@
 
     event.preventDefault();
     event.stopPropagation();
-    handlePromptClick(dot.dataset.promptId);
+    handlePromptClick(dot.dataset.promptId, "compact", Number(dot.dataset.promptNumber));
   }
 
   function showCompactTooltip(dot, prompt) {
@@ -625,12 +649,30 @@
     return `${text.slice(0, COMPACT_TOOLTIP_MAX_TEXT_LENGTH)}...`;
   }
 
-  function handlePromptClick(promptId, source) {
+  function handlePromptClick(promptId, source, displayedIndex) {
     let prompt = findPromptById(promptId);
-    if (!prompt || !prompt.element || !prompt.element.isConnected) {
-      refreshPrompts();
-      prompt = findPromptById(promptId);
-    }
+    const originalIndex = prompt ? prompt.originalIndex : null;
+
+    refreshPrompts();
+    prompt =
+      originalIndex === null
+        ? findPromptById(promptId)
+        : resolvePromptByOriginalIndex(originalIndex) || findPromptById(promptId);
+
+    debugNavigator("[PromptNavigator] prompt click", {
+      source: source || "expanded",
+      displayedIndex,
+      originalIndex: prompt ? prompt.originalIndex : null,
+      promptId,
+      textPreview: prompt && prompt.text ? prompt.text.slice(0, 80) : ""
+    });
+    debugNavigator("[PromptNavigator] click jump start", {
+      source: source || "expanded",
+      displayedIndex,
+      originalIndex: prompt ? prompt.originalIndex : originalIndex,
+      promptId: prompt ? prompt.id : promptId,
+      textPreview: prompt && prompt.text ? prompt.text.slice(0, 80) : ""
+    });
 
     if (!prompt || !prompt.element || !prompt.element.isConnected) {
       debugNavigator("jump requested", {
@@ -651,18 +693,130 @@
 
   function scrollToPrompt(prompt, source) {
     const element = prompt.element;
+    const scrollContainer = getScrollContainer();
     setActivePrompt(prompt.id, prompt.index);
     debugPromptClick(prompt, source, true);
+    beginProgrammaticScrolling();
 
-    element.scrollIntoView({
-      behavior: "smooth",
-      block: "center"
+    debugNavigator("[PromptNavigator] scroll target", {
+      originalIndex: prompt.originalIndex,
+      promptId: prompt.id,
+      targetExists: !!element,
+      targetText: element.innerText ? element.innerText.slice(0, 80) : "",
+      scrollContainer
     });
+    scrollToPromptElement(element, prompt.originalIndex);
 
     element.classList.add(HIGHLIGHT_CLASS);
     window.setTimeout(() => {
       element.classList.remove(HIGHLIGHT_CLASS);
     }, HIGHLIGHT_DELAY_MS);
+  }
+
+  function beginProgrammaticScrolling() {
+    isProgrammaticScrolling = true;
+    window.clearTimeout(programmaticScrollTimer);
+    window.clearTimeout(updateTimer);
+    delayedUpdateAfterProgrammaticScroll = true;
+    programmaticScrollTimer = window.setTimeout(() => {
+      isProgrammaticScrolling = false;
+      if (delayedUpdateAfterProgrammaticScroll) {
+        delayedUpdateAfterProgrammaticScroll = false;
+        scheduleUpdate();
+      }
+      scheduleActivePromptUpdate();
+    }, PROGRAMMATIC_SCROLL_LOCK_MS);
+  }
+
+  function scrollToPromptElement(element, originalIndex) {
+    if (!element) {
+      return;
+    }
+
+    element.scrollIntoView({
+      behavior: "auto",
+      block: "center"
+    });
+    debugNavigator("[PromptNavigator] first positioning", {
+      originalIndex,
+      rectTop: element.getBoundingClientRect().top
+    });
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const latestPrompt = resolvePromptByOriginalIndex(originalIndex);
+        const latestElement = latestPrompt && latestPrompt.element ? latestPrompt.element : element;
+
+        preciseScrollToElement(latestElement);
+        debugNavigator("[PromptNavigator] precise positioning", {
+          originalIndex,
+          rectTop: latestElement.getBoundingClientRect().top
+        });
+
+        window.setTimeout(
+          () => verifyPromptVisible(latestElement, originalIndex),
+          CORRECTION_CHECK_DELAY_MS
+        );
+        window.setTimeout(
+          () => verifyPromptVisible(latestElement, originalIndex),
+          FINAL_CORRECTION_CHECK_DELAY_MS
+        );
+      });
+    });
+  }
+
+  function preciseScrollToElement(element) {
+    const scrollContainer = getScrollContainer();
+    const offset = COMPACT_SCROLL_OFFSET_PX;
+    const rect = element.getBoundingClientRect();
+
+    if (isWindowScrollContainer(scrollContainer)) {
+      const absoluteTop = rect.top + window.scrollY;
+      window.scrollTo({
+        top: Math.max(absoluteTop - offset, 0),
+        behavior: "smooth"
+      });
+      return;
+    }
+
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const targetTop = scrollContainer.scrollTop + rect.top - containerRect.top - offset;
+    scrollContainer.scrollTo({
+      top: Math.max(targetTop, 0),
+      behavior: "smooth"
+    });
+  }
+
+  function verifyPromptVisible(element, originalIndex) {
+    if (!isProgrammaticScrolling || !element || !element.isConnected) {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const targetBandTop = window.innerHeight * 0.15;
+    const targetBandBottom = window.innerHeight * 0.55;
+    const corrected = rect.top < targetBandTop || rect.top > targetBandBottom;
+
+    debugNavigator("[PromptNavigator] correction check", {
+      originalIndex,
+      rectTop: rect.top,
+      targetBandTop,
+      targetBandBottom,
+      corrected
+    });
+
+    if (corrected) {
+      preciseScrollToElement(element);
+    }
+  }
+
+  function isWindowScrollContainer(scrollContainer) {
+    return (
+      scrollContainer === window ||
+      scrollContainer === document.scrollingElement ||
+      scrollContainer === document.documentElement ||
+      scrollContainer === document.body
+    );
   }
 
   function debugPromptClick(prompt, source, targetFound) {
@@ -1067,6 +1221,7 @@
     const prompt = {
       id: getPromptKey({ text }, index - 1),
       index,
+      originalIndex: index - 1,
       text,
       preview: previewText(text),
       element

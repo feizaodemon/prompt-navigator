@@ -22,14 +22,14 @@ assert(content.includes('dot.addEventListener("click", handleCompactDotClick)'),
 assert(content.includes("function handleCompactDotClick(event)"), "content.js should provide compact dot click handler");
 assert(content.includes("event.preventDefault()"), "compact dot click should prevent default behavior");
 assert(content.includes("event.stopPropagation()"), "compact dot click should stop bubbling interference");
-assert(content.includes("handlePromptClick(promptId)"), "compact dot click should call the same unified jump entry as prompt list");
+assert(content.includes('handlePromptClick(promptId, "compact", Number(dot.dataset.promptNumber))'), "compact dot click should call the same unified jump entry as prompt list");
 assert(content.includes('compactTimeline.addEventListener("click", handleCompactTimelineClick)'), "dots container should keep click delegation fallback");
 assert(content.includes("function handleCompactTimelineClick(event)"), "content.js should provide compact timeline delegated click handler");
 assert(content.includes('event.target.closest(".acn-compact-dot")'), "delegated click should find the concrete dot target");
 assert(content.includes('debugNavigator("compact dot clicked"'), "DEBUG_NAVIGATOR=true should log compact dot clicks");
 assert(content.includes('debugNavigator("jump requested"'), "DEBUG_NAVIGATOR=true should log jump requests");
-assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId))'), "prompt list click should use handlePromptClick");
-assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId, "pinned"))'), "pinned click should use handlePromptClick");
+assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId, "expanded", promptNumber))'), "prompt list click should use handlePromptClick");
+assert(content.includes('item.addEventListener("click", () => handlePromptClick(promptId, "pinned", promptNumber))'), "pinned click should use handlePromptClick");
 assert(!content.includes("scrollToMessage(message.element"), "code should not bypass unified jump entry");
 
 assert(styles.includes("pointer-events: auto"), "compact dot should explicitly receive pointer events");

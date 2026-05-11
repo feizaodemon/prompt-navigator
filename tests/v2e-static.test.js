@@ -29,7 +29,7 @@ assert(content.includes("renderCompactTimeline(messages, pinnedKeys)"), "compact
 assert(content.includes("item.classList.toggle(\"is-active\", isPromptActive(promptKey, promptNumber))"), "expanded items should render active state");
 assert(content.includes("dot.classList.toggle(\"is-active\", isPromptActive(prompt.id, prompt.index))"), "compact dots should render active state");
 assert(content.includes("function isPromptActive(promptKey, promptIndex)"), "expanded and compact modes should share one active state helper");
-assert(content.includes("handlePromptClick(promptId)"), "V2D unified click entry should remain in use");
+assert(content.includes("function handlePromptClick(promptId, source, displayedIndex)"), "V2D unified click entry should remain in use");
 
 assert(content.includes("const COMPACT_TOOLTIP_MAX_TEXT_LENGTH"), "tooltip should have an explicit long text cap");
 assert(content.includes("fullPromptPreview"), "tooltip should use a stable long preview separate from compact dot dataset");

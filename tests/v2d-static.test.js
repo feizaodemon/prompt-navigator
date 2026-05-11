@@ -11,9 +11,9 @@ assert(!JSON.stringify(manifest).includes("chat.deepseek.com"), "manifest must n
 
 assert(content.includes("calculateCompactDotPosition"), "compact dots should keep percentage positioning");
 assert(content.includes("dot.style.top = `${calculateCompactDotPosition(index, messages.length)}%`"), "compact dots should keep absolute percentage top");
-assert(content.includes("handlePromptClick(promptId)"), "compact dot click should use the same unified click entry as expanded prompt item");
+assert(content.includes('handlePromptClick(promptId, "compact", Number(dot.dataset.promptNumber))'), "compact dot click should use the same unified click entry as expanded prompt item");
 assert(content.includes("COMPACT_SCROLL_OFFSET_PX"), "V2D offset constant should remain documented in code");
-assert(content.includes("element.scrollIntoView({"), "compact dot jump should use the same scroll logic as expanded prompt item");
+assert(content.includes("scrollToPromptElement(element, prompt.originalIndex)"), "compact dot jump should use the same scroll logic as expanded prompt item");
 assert(content.includes('debugNavigator("jump requested"'), "jump should emit debug log when DEBUG_NAVIGATOR=true");
 assert(content.includes("numberLine.textContent = `#${promptNumber}`"), "tooltip should keep weak prompt number display");
 

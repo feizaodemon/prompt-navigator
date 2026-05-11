@@ -41,7 +41,7 @@ assert(content.includes("[Prompt Navigator][Compact Tooltip] layout"), "layout s
 assert(content.includes("window.innerWidth - tooltipRect.width - viewportPadding"), "tooltip left should stay inside viewport");
 assert(content.includes("window.innerHeight - tooltipRect.height - viewportPadding"), "tooltip top should stay inside viewport");
 assert(content.includes("Prompt ${promptNumber}"), "tooltip should include prompt number");
-assert(content.includes("handlePromptClick(promptId)"), "compact dot click should use unified prompt click entry");
+assert(content.includes('handlePromptClick(promptId, "compact", Number(dot.dataset.promptNumber))'), "compact dot click should use unified prompt click entry");
 assert(content.includes("is-pinned"), "compact dot should mark pinned state");
 assert(content.includes("is-active"), "compact dot should mark active state");
 
