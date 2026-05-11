@@ -14,9 +14,9 @@ assert(content.includes("acn-collection-back-button"), "detail view should inclu
 assert(content.includes("acn-saved-conversation-list"), "detail view should render a saved conversation list");
 
 assert(!content.includes("location.href = savedConversation"), "V3E must not navigate to saved conversation URLs");
-assert(!content.includes("renameCollection"), "V3E must not implement rename collection");
-assert(!content.includes("deleteCollection"), "V3E must not implement delete collection");
-assert(!content.includes("removeConversationFromCollection("), "V3E UI must not implement remove conversation action");
+assert(content.includes("function renameCollectionFromInput("), "V3G may add rename collection after V3E");
+assert(content.includes("function deleteCollection("), "V3G may add delete collection after V3E");
+assert(content.includes("function removeSavedConversationFromCollection("), "V3G may add remove conversation action after V3E");
 assert(!content.includes("saveCollectionsState(normalizedState)"), "read-only detail render should not write normalized state");
 
 assert(content.includes("userEditedTitle || savedConversation.sourceTitle || savedConversation.title || \"Untitled conversation\""), "saved conversation title should use requested fallback priority");

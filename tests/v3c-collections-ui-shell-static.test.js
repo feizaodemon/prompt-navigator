@@ -27,7 +27,7 @@ assert(!content.includes("aiConversationNavigatorCollectionUi"), "V3C must not a
 assert(!content.includes("aiConversationNavigatorCollectionDrafts"), "V3C must not add draft storage keys");
 
 assert(!content.includes("createCollectionFromUi"), "collections UI should not add a second create flow");
-assert(!content.includes("deleteCollection"), "V3C must not implement delete collection UI writes");
+assert(content.includes("function deleteCollection("), "V3G may add delete collection on top of the V3C shell");
 
 assert(content.includes("function handlePromptClick(promptId, source, displayedIndex)"), "prompt click entry should remain");
 assert(content.includes("function scrollToPrompt(prompt, source)"), "scrollToPrompt should remain");

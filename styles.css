@@ -401,7 +401,11 @@
 }
 
 .acn-collection-create-button,
-.acn-collection-action {
+.acn-collection-action,
+.acn-collection-rename,
+.acn-collection-delete,
+.acn-collection-save,
+.acn-collection-cancel {
   height: 26px;
   flex: 0 0 auto;
   padding: 0 8px;
@@ -416,12 +420,20 @@
 }
 
 .acn-collection-create-button:hover,
-.acn-collection-action:hover {
+.acn-collection-action:hover,
+.acn-collection-rename:hover,
+.acn-collection-delete:hover,
+.acn-collection-save:hover,
+.acn-collection-cancel:hover {
   border-color: var(--pn-accent);
 }
 
 .acn-collection-create-button:disabled,
-.acn-collection-action:disabled {
+.acn-collection-action:disabled,
+.acn-collection-rename:disabled,
+.acn-collection-delete:disabled,
+.acn-collection-save:disabled,
+.acn-collection-cancel:disabled {
   color: var(--pn-text-muted);
   cursor: default;
   opacity: 0.72;
@@ -467,6 +479,14 @@
   background: var(--pn-bg);
   border: 1px solid var(--pn-border);
   border-radius: 8px;
+}
+
+.acn-collection-manage-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .acn-collection-body {
@@ -548,6 +568,50 @@
   font-size: 12px;
 }
 
+.acn-collection-edit {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.acn-collection-edit-input {
+  width: 100%;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  color: var(--pn-text);
+  background: var(--pn-bg-elevated);
+  border: 1px solid var(--pn-border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.acn-collection-edit-input:focus {
+  border-color: var(--pn-accent);
+}
+
+.acn-collection-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.acn-danger-action {
+  color: color-mix(in srgb, var(--pn-text), #b42318 45%);
+}
+
+.acn-danger-action:hover {
+  border-color: color-mix(in srgb, var(--pn-border), #b42318 55%);
+}
+
+.acn-inline-status {
+  color: var(--pn-text-muted);
+  font-size: 12px;
+}
+
 .acn-saved-conversation-list {
   display: flex;
   flex-direction: column;
@@ -595,11 +659,13 @@
 
 .acn-saved-conversation-actions {
   display: flex;
+  gap: 6px;
   justify-content: flex-end;
   margin-top: 10px;
 }
 
-.acn-saved-conversation-open {
+.acn-saved-conversation-open,
+.acn-saved-conversation-remove {
   height: 26px;
   flex: 0 0 auto;
   padding: 0 8px;
@@ -612,7 +678,8 @@
   font-size: 12px;
 }
 
-.acn-saved-conversation-open:hover {
+.acn-saved-conversation-open:hover,
+.acn-saved-conversation-remove:hover {
   border-color: var(--pn-accent);
 }
 

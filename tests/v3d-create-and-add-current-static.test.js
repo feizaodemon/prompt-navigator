@@ -36,8 +36,8 @@ assert(!content.includes("aiConversationNavigatorCollectionUi"), "V3D must not a
 assert(!content.includes("aiConversationNavigatorCollectionDrafts"), "V3D must not add collection draft storage keys");
 assert(!content.includes("aiConversationNavigatorSavedConversation"), "V3D must not add saved conversation storage keys");
 
-assert(!content.includes("renameCollection"), "V3D must not implement rename collection");
-assert(!content.includes("deleteCollection"), "V3D must not implement delete collection");
+assert(content.includes("function renameCollectionInState("), "V3G may add rename collection after V3D");
+assert(content.includes("function deleteCollectionFromState("), "V3G may add delete collection after V3D");
 assert.deepStrictEqual(manifest.content_scripts[0].matches, ["https://chatgpt.com/*"]);
 assert(!JSON.stringify(manifest).includes("chat.deepseek.com"), "manifest must not enable DeepSeek");
 

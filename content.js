@@ -46,6 +46,7 @@
   let collectionsEmpty = null;
   let collectionDetail = null;
   let selectedCollectionId = "";
+  let editingCollectionId = "";
   let activePanelView = VIEW_PROMPTS;
   let collectionsRenderToken = 0;
   let compactTooltip = null;
@@ -675,6 +676,7 @@
     action.type = "button";
     action.textContent = "Add current";
     action.addEventListener("click", (event) => {
+      event.preventDefault();
       event.stopPropagation();
       addCurrentConversationToCollection(collection.id, action);
     });
@@ -687,7 +689,44 @@
       action.disabled = true;
     }
 
-    item.append(body, action);
+    const manageActions = document.createElement("div");
+    manageActions.className = "acn-collection-manage-actions";
+
+    const renameButton = document.createElement("button");
+    renameButton.className = "acn-collection-rename";
+    renameButton.type = "button";
+    renameButton.textContent = "Rename";
+    renameButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      editingCollectionId = collection.id;
+      renderCollectionsView();
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "acn-collection-delete acn-danger-action";
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteCollection(collection.id);
+    });
+
+    manageActions.append(action, renameButton, deleteButton);
+
+    if (editingCollectionId === collection.id) {
+      body.textContent = "";
+      body.removeAttribute("role");
+      body.removeAttribute("aria-label");
+      body.tabIndex = -1;
+      body.appendChild(createCollectionEdit(collection, () => {
+        editingCollectionId = "";
+        renderCollectionsView();
+      }));
+    }
+
+    item.append(body, manageActions);
     return item;
   }
 
@@ -738,8 +777,41 @@
     count.className = "acn-collection-detail-count";
     count.textContent = `${savedConversations.length} ${savedConversations.length === 1 ? "conversation" : "conversations"}`;
 
-    titleWrap.append(title, count);
-    header.append(backButton, titleWrap);
+    if (editingCollectionId === collection.id) {
+      titleWrap.appendChild(createCollectionEdit(collection, () => {
+        editingCollectionId = "";
+        renderCollectionsView();
+      }));
+    } else {
+      titleWrap.append(title, count);
+    }
+
+    const manageActions = document.createElement("div");
+    manageActions.className = "acn-collection-manage-actions";
+
+    const renameButton = document.createElement("button");
+    renameButton.className = "acn-collection-rename";
+    renameButton.type = "button";
+    renameButton.textContent = "Rename";
+    renameButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      editingCollectionId = collection.id;
+      renderCollectionsView();
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "acn-collection-delete acn-danger-action";
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteCollection(collection.id);
+    });
+
+    manageActions.append(renameButton, deleteButton);
+    header.append(backButton, titleWrap, manageActions);
 
     const savedConversationList = document.createElement("div");
     savedConversationList.className = "acn-saved-conversation-list";
@@ -759,13 +831,129 @@
     }
 
     savedConversations.forEach((savedConversation) => {
-      savedConversationList.appendChild(createSavedConversationItem(savedConversation));
+      savedConversationList.appendChild(createSavedConversationItem(savedConversation, collection.id));
     });
 
     collectionDetail.append(header, savedConversationList);
   }
 
-  function createSavedConversationItem(savedConversation) {
+  function createCollectionEdit(collection, onCancel) {
+    const edit = document.createElement("div");
+    edit.className = "acn-collection-edit";
+    edit.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    const input = document.createElement("input");
+    input.className = "acn-collection-edit-input";
+    input.type = "text";
+    input.value = collection.name || "";
+    input.setAttribute("aria-label", "Collection name");
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        renameCollectionFromInput(collection.id, input);
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (typeof onCancel === "function") {
+          onCancel();
+        }
+      }
+    });
+
+    const actions = document.createElement("div");
+    actions.className = "acn-collection-edit-actions";
+
+    const saveButton = document.createElement("button");
+    saveButton.className = "acn-collection-save";
+    saveButton.type = "button";
+    saveButton.textContent = "Save";
+    saveButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      renameCollectionFromInput(collection.id, input);
+    });
+
+    const cancelButton = document.createElement("button");
+    cancelButton.className = "acn-collection-cancel";
+    cancelButton.type = "button";
+    cancelButton.textContent = "Cancel";
+    cancelButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof onCancel === "function") {
+        onCancel();
+      }
+    });
+
+    actions.append(saveButton, cancelButton);
+    edit.append(input, actions);
+    setTimeout(() => input.focus(), 0);
+    return edit;
+  }
+
+  function renameCollectionFromInput(collectionId, input) {
+    const nextName = input && typeof input.value === "string" ? input.value.trim() : "";
+    if (!nextName) {
+      setCollectionStatus("Enter a collection name");
+      if (input) {
+        input.focus();
+      }
+      return;
+    }
+
+    loadCollectionsState().then((state) => {
+      const nextState = renameCollectionInState(state, collectionId, nextName);
+      return saveCollectionsState(nextState).then((saved) => {
+        if (!saved) {
+          setCollectionStatus("Could not rename collection");
+          return;
+        }
+
+        editingCollectionId = "";
+        setCollectionStatus("Saved");
+        renderCollectionsView();
+      });
+    }).catch((error) => {
+      debugNavigator("[PromptNavigator] collection rename failed", error);
+      setCollectionStatus("Could not rename collection");
+    });
+  }
+
+  function deleteCollection(collectionId) {
+    if (!collectionId) {
+      return;
+    }
+
+    if (typeof window !== "undefined" && !window.confirm("Delete this collection?")) {
+      return;
+    }
+
+    loadCollectionsState().then((state) => {
+      const nextState = deleteCollectionFromState(state, collectionId);
+      return saveCollectionsState(nextState).then((saved) => {
+        if (!saved) {
+          setCollectionStatus("Could not delete collection");
+          return;
+        }
+
+        if (selectedCollectionId === collectionId) {
+          selectedCollectionId = "";
+        }
+        if (editingCollectionId === collectionId) {
+          editingCollectionId = "";
+        }
+        setCollectionStatus("Deleted");
+        renderCollectionsView();
+      });
+    }).catch((error) => {
+      debugNavigator("[PromptNavigator] collection delete failed", error);
+      setCollectionStatus("Could not delete collection");
+    });
+  }
+
+  function createSavedConversationItem(savedConversation, collectionId) {
     const item = document.createElement("div");
     item.className = "acn-saved-conversation-item";
 
@@ -808,6 +996,7 @@
 
     if (isSafeConversationUrl(savedConversation.conversationUrl)) {
       openButton.addEventListener("click", (event) => {
+        event.preventDefault();
         event.stopPropagation();
         openSavedConversationUrl(savedConversation);
       });
@@ -817,10 +1006,46 @@
       openButton.title = "Conversation URL unavailable";
     }
 
-    actions.appendChild(openButton);
+    const removeButton = document.createElement("button");
+    removeButton.className = "acn-saved-conversation-remove acn-danger-action";
+    removeButton.type = "button";
+    removeButton.textContent = "Remove";
+    removeButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      removeSavedConversationFromCollection(collectionId, savedConversation.id);
+    });
+
+    actions.append(openButton, removeButton);
     item.appendChild(actions);
 
     return item;
+  }
+
+  function removeSavedConversationFromCollection(collectionId, savedConversationId) {
+    if (!collectionId || !savedConversationId) {
+      return;
+    }
+
+    if (typeof window !== "undefined" && !window.confirm("Remove this conversation from the collection?")) {
+      return;
+    }
+
+    loadCollectionsState().then((state) => {
+      const nextState = removeConversationFromCollectionState(state, collectionId, savedConversationId);
+      return saveCollectionsState(nextState).then((saved) => {
+        if (!saved) {
+          setCollectionStatus("Could not remove conversation");
+          return;
+        }
+
+        setCollectionStatus("Removed");
+        renderCollectionsView();
+      });
+    }).catch((error) => {
+      debugNavigator("[PromptNavigator] remove saved conversation failed", error);
+      setCollectionStatus("Could not remove conversation");
+    });
   }
 
   function addCurrentConversationToCollection(collectionId, actionButton) {
@@ -2052,6 +2277,44 @@
     return nextState;
   }
 
+  function renameCollectionInState(state, collectionId, nextName) {
+    const nextState = normalizeCollectionsState(state);
+    const collection = nextState.collectionsById[collectionId];
+    const trimmedName = typeof nextName === "string" ? nextName.trim() : "";
+
+    if (!trimmedName) {
+      return nextState;
+    }
+
+    if (!collection) {
+      return nextState;
+    }
+
+    collection.name = trimmedName;
+    collection.updatedAt = new Date().toISOString();
+    return nextState;
+  }
+
+  function deleteCollectionFromState(state, collectionId) {
+    const nextState = normalizeCollectionsState(state);
+    if (!nextState.collectionsById[collectionId]) {
+      return nextState;
+    }
+
+    delete nextState.collectionsById[collectionId];
+    nextState.collectionOrder = nextState.collectionOrder.filter((id) => id !== collectionId);
+
+    Object.values(nextState.savedConversationsById).forEach((savedConversation) => {
+      savedConversation.collectionIds = savedConversation.collectionIds.filter((id) => id !== collectionId);
+      savedConversation.updatedAt = new Date().toISOString();
+      if (savedConversation.collectionIds.length === 0) {
+        delete nextState.savedConversationsById[savedConversation.id];
+      }
+    });
+
+    return nextState;
+  }
+
   function removeConversationFromCollectionState(state, collectionId, savedConversationId) {
     const nextState = normalizeCollectionsState(state);
     const collection = nextState.collectionsById[collectionId];
@@ -2065,6 +2328,9 @@
     if (savedConversation) {
       savedConversation.collectionIds = savedConversation.collectionIds.filter((id) => id !== collectionId);
       savedConversation.updatedAt = new Date().toISOString();
+      if (savedConversation.collectionIds.length === 0) {
+        delete nextState.savedConversationsById[savedConversationId];
+      }
     }
 
     return nextState;

@@ -5,7 +5,7 @@ const content = fs.readFileSync("content.js", "utf8");
 const styles = fs.readFileSync("styles.css", "utf8");
 const manifest = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
 
-const savedConversationItemMatch = content.match(/function createSavedConversationItem\(savedConversation\) \{[\s\S]*?\n  \}/);
+const savedConversationItemMatch = content.match(/function createSavedConversationItem\(savedConversation, collectionId\) \{[\s\S]*?\n  \}/);
 assert(savedConversationItemMatch, "content.js should render saved conversation items");
 const savedConversationItem = savedConversationItemMatch[0];
 
@@ -37,9 +37,9 @@ assert(!content.includes("aiConversationNavigatorCollectionOpen"), "V3F must not
 assert(!content.includes("aiConversationNavigatorSavedConversationOpen"), "V3F must not add saved conversation open storage keys");
 assert(!content.includes("aiConversationNavigatorCollectionUi"), "V3F must not add collections UI storage keys");
 assert(!content.includes("saveCollectionsState(normalizedState)"), "detail render should remain read-only");
-assert(!content.includes("renameCollection"), "V3F must not implement rename collection");
-assert(!content.includes("deleteCollection"), "V3F must not implement delete collection");
-assert(!content.includes("removeConversationFromCollection("), "V3F UI must not implement remove conversation action");
+assert(content.includes("function renameCollectionInState("), "V3G may add rename collection after V3F");
+assert(content.includes("function deleteCollectionFromState("), "V3G may add delete collection after V3F");
+assert(content.includes("function removeSavedConversationFromCollection("), "V3G may add remove conversation action after V3F");
 
 assert(content.includes("function handlePromptClick(promptId, source, displayedIndex)"), "prompt click entry should remain");
 assert(content.includes("function scrollToPrompt(prompt, source)"), "scrollToPrompt should remain");
