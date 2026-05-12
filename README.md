@@ -15,6 +15,7 @@
 - 搜索框和手动刷新按钮
 - Pin / 星标重要 prompt
 - Pinned prompt 本地保存到 `chrome.storage.local`
+- Conversation Collections：按主题保存多个 ChatGPT conversations
 - 当前 active prompt 高亮
 - ChatGPT 浅色 / 深色主题自动适配
 - 本地运行，不上传数据，不使用外部依赖
@@ -64,6 +65,36 @@ compact timeline 顶部有一个小按钮，用于打开搜索和完整 prompt l
 3. pinned 状态按当前 ChatGPT conversation URL 保存到本地 `chrome.storage.local`。
 4. pinned prompt 在 compact timeline 上有特殊外圈标记。
 
+## V3 Conversation Collections
+
+V3: Topic-based Conversation Collections 用于把同一主题下的多个 ChatGPT conversations / threads 加入同一个 collection，方便之后从 collection 快速查看并打开原始 conversation URL。Collections 是 conversation 级别的本地组织能力，不是 prompt-level favorites，也不是收藏单个 prompt 或单条回答。
+
+当前范围：
+
+- ChatGPT only：只支持 `https://chatgpt.com/*`。
+- Local persistence only：collections 数据只保存在浏览器本地 `chrome.storage.local`。
+- No backend / no sync：没有后端服务、账号系统或跨设备同步。
+
+使用方式：
+
+1. 打开 compact timeline 顶部按钮，进入面板。
+2. 切换到 `Collections` tab。
+3. 输入 collection 名称并点击 `Create`。
+4. 在 collection 列表中点击 `Add current`，把当前 ChatGPT conversation 保存到该 collection。
+5. 点击 collection 主体进入 detail view。
+6. 在 detail view 中点击 `Open conversation` 打开原始 conversation URL。
+7. 使用 `Rename` 修改 collection 名称。
+8. 使用 `Remove` 从 collection 中移除某条 saved conversation。
+9. 使用 `Delete` 删除 collection 的本地记录。
+
+隐私说明：
+
+- Collections 只保存标题、原始 URL、平台、时间戳和短 snippet。
+- 不保存完整 conversation content。
+- 不保存完整 prompt content。
+- 不上传任何聊天内容。
+- 不使用后端、云同步或外部分析工具。
+
 ## DeepSeek support 暂缓
 
 DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全部存在于当前 DOM 中。因此当前扩展不会在 DeepSeek 页面运行，也不会启用 DeepSeek adapter。
@@ -71,8 +102,8 @@ DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全
 ## Roadmap
 
 - 当前稳定版本：V2G Direct scroll without reverse jump。
-- 当前稳定分支：`v2g-direct-scroll-navigation`。
-- V3 规划：`Topic-based Conversation Collections`，用于把同一主题下的多个 ChatGPT conversation / thread 加入用户自定义 collection，并从 collection 快速打开原始对话。
+- 当前 V3 工作分支：`v3-conversation-collections`。
+- V3 MVP：`Topic-based Conversation Collections`，用于把同一主题下的多个 ChatGPT conversation / thread 加入用户自定义 collection，并从 collection 快速打开原始对话。
 - V3 不规划 prompt-level favorites、单条 assistant answer 收藏或 Prompt Vault。
 
 详细 roadmap 见 `docs/roadmap.md`，版本历史见 `docs/change_log.md`。
@@ -80,11 +111,12 @@ DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全
 ## 文件说明
 
 - `manifest.json`：Manifest V3 扩展配置，只匹配 `https://chatgpt.com/*`，包含 `storage` 权限。
-- `content.js`：识别 ChatGPT 用户 prompt、渲染 compact timeline、弹出 prompt list 面板、搜索、刷新、pin、本地状态读写、点击跳转、active 高亮和主题检测。
-- `styles.css`：compact timeline、浮动面板、圆点、tooltip、pinned、active、滚动条和主题变量样式。
+- `content.js`：识别 ChatGPT 用户 prompt、渲染 compact timeline、弹出 prompt list 面板、搜索、刷新、pin、collections、本地状态读写、点击跳转、active 高亮和主题检测。
+- `styles.css`：compact timeline、浮动面板、圆点、tooltip、pinned、active、collections、滚动条和主题变量样式。
 - `tests/v2a-static.test.js`：V2A 静态检查。
 - `tests/v2b-static.test.js`：V2B 静态检查。
 - `tests/v2c-static.test.js`：V2C compact timeline / panel 静态检查。
+- `tests/v3h-docs-and-polish-static.test.js`：V3H 文档、polish 范围和关键回归护栏静态检查。
 
 ## 安装方式
 
@@ -143,6 +175,17 @@ DeepSeek 页面存在懒加载 / 虚拟滚动问题，历史 prompt 不一定全
 5. 刷新 ChatGPT 页面，确认 pinned 状态尽量保留。
 6. 点击 pinned prompt，确认能跳转。
 
+### Conversation Collections
+
+1. 打开 prompt list 面板并切换到 `Collections` tab。
+2. 没有 collection 时，确认 empty state 清楚说明可以按主题创建 collection。
+3. 创建一个 collection，确认它出现在列表中并显示 conversation count。
+4. 点击 `Add current`，确认当前 conversation 被保存，重复点击不会重复添加。
+5. 刷新 ChatGPT 页面，确认 collection 和 membership 仍存在。
+6. 点击 collection 主体进入 detail view，确认 saved conversation 显示 title、platform、metadata、snippet 和 URL。
+7. 点击 `Open conversation`，确认打开原始 ChatGPT conversation URL。
+8. 使用 `Rename`、`Remove`、`Delete`，确认这些操作只影响扩展本地记录，不删除原始 ChatGPT conversation。
+
 ### DeepSeek 当前状态
 
 1. 打开 `manifest.json`。
@@ -157,6 +200,7 @@ node tests/v2a-static.test.js
 node tests/v2b-static.test.js
 node tests/v2c-static.test.js
 node tests/v2d-static.test.js
+node tests/v3h-docs-and-polish-static.test.js
 node --check content.js
 ```
 
@@ -169,10 +213,12 @@ node --check content.js
 - 没有 `fetch`、`XMLHttpRequest` 或上传聊天内容的逻辑。
 - 没有实现 export、prompt vault、folder management、sync、账号系统或后端服务。
 - DeepSeek support 没有被重新启用。
+- Collections storage key 仍为 `aiConversationNavigatorCollections`。
+- Collections `schemaVersion` 仍为 `1`。
 
 ## 隐私说明
 
-本扩展只读取当前 ChatGPT 页面中可见的用户 prompt，用于生成本地导航。Pin 功能只保存固定状态所需的最小信息到本地浏览器 `chrome.storage.local`。扩展不会上传聊天内容，不会请求外部服务器，不会使用远程同步，也不会保存完整聊天记录。
+本扩展只读取当前 ChatGPT 页面中可见的用户 prompt，用于生成本地导航。Pin 功能只保存固定状态所需的最小信息到本地浏览器 `chrome.storage.local`。Collections 只把标题、URL、平台、时间戳和短 snippet 保存到本地 `chrome.storage.local`，no full conversation content stored，no full prompt content stored。扩展不会上传聊天内容，不会请求外部服务器，不会使用远程同步，也不会保存完整聊天记录。
 
 ## 当前限制
 
@@ -182,4 +228,4 @@ node --check content.js
 - 历史消息未加载到 DOM 时，对应 prompt 不会显示在 timeline 中。
 - 当前 active 高亮优先保证点击后的状态；暂未实现基于滚动位置自动切换 active prompt。
 - DeepSeek support 暂缓。
-- 当前版本不支持 export、Prompt Vault、文件夹管理、跨设备同步、账号系统或后端服务。
+- 当前版本不支持 export/import、Prompt Vault、tags、nested folders、ChatGPT left sidebar integration、跨设备同步、账号系统或后端服务。

@@ -114,7 +114,7 @@ Gemini Voyager 的核心产品结构可以理解为：
 
 功能：
 
-- 创建 collection / folder / favorites group
+- 创建 collection
 - 将当前 conversation 加入 collection
 - 查看 collection 内的 saved conversations
 - 点击 saved conversation 打开原始 conversation URL
@@ -750,7 +750,7 @@ DeepSeek 暂缓，后续单独开发 adapter。
 
 核心问题：
 
-用户需要把同一主题下的多个 ChatGPT conversations / threads 归到同一个 collection / folder / favorites group 中，之后可以快速查看并跳转回原始对话。
+用户需要把同一主题下的多个 ChatGPT conversations / threads 归到同一个 collection 中，之后可以快速查看并跳转回原始对话。
 
 示例 collection：
 
@@ -796,9 +796,10 @@ V3 MVP 不包含：
 * V3B: Collection storage schema
 * V3C: Collections UI shell
 * V3D: Add current conversation to collection
-* V3E: Collection detail and open conversation
-* V3F: Manage collections and saved conversations
-* V3G: Polish and regression tests
+* V3E: Collection detail read-only view
+* V3F: Open saved conversation URL
+* V3G: Manage collections and saved conversations
+* V3H: Polish, regression checklist, and documentation
 
 ---
 

@@ -254,7 +254,7 @@
 
     const collectionsEmptyText = document.createElement("div");
     collectionsEmptyText.className = "acn-collections-empty-text";
-    collectionsEmptyText.textContent = "Collections will let you group related conversations by topic.";
+    collectionsEmptyText.textContent = "Create a collection to group related ChatGPT conversations by topic.";
 
     collectionsEmpty.append(collectionsEmptyTitle, collectionsEmptyText);
 
@@ -824,7 +824,7 @@
       emptyTitle.textContent = "No conversations in this collection yet";
       const emptyText = document.createElement("div");
       emptyText.className = "acn-collection-detail-empty-text";
-      emptyText.textContent = "Back to Collections and use Add current to save this conversation.";
+      emptyText.textContent = "Go back and use Add current to save this conversation.";
       empty.append(emptyTitle, emptyText);
       collectionDetail.append(header, empty);
       return;
@@ -926,7 +926,7 @@
       return;
     }
 
-    if (typeof window !== "undefined" && !window.confirm("Delete this collection?")) {
+    if (typeof window !== "undefined" && !window.confirm("Delete this collection record? This only removes local extension data and does not delete the original ChatGPT conversation.")) {
       return;
     }
 
@@ -992,7 +992,7 @@
     const openButton = document.createElement("button");
     openButton.className = "acn-saved-conversation-open";
     openButton.type = "button";
-    openButton.textContent = "Open";
+    openButton.textContent = "Open conversation";
 
     if (isSafeConversationUrl(savedConversation.conversationUrl)) {
       openButton.addEventListener("click", (event) => {
@@ -1003,7 +1003,7 @@
     } else {
       openButton.disabled = true;
       openButton.classList.add("acn-saved-conversation-open-disabled");
-      openButton.title = "Conversation URL unavailable";
+      openButton.title = "Invalid URL";
     }
 
     const removeButton = document.createElement("button");
@@ -1027,7 +1027,7 @@
       return;
     }
 
-    if (typeof window !== "undefined" && !window.confirm("Remove this conversation from the collection?")) {
+    if (typeof window !== "undefined" && !window.confirm("Remove this saved conversation from this collection? This only removes local extension data and does not delete the original ChatGPT conversation.")) {
       return;
     }
 

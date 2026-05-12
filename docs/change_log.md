@@ -1,10 +1,11 @@
 # Change Log
 
-本文记录 Prompt Timeline Navigator 从 V1 到当前 V2G 的功能演进。当前推荐稳定分支为 `v2g-direct-scroll-navigation`。
+本文记录 Prompt Timeline Navigator 从 V1 到当前 V3 Conversation Collections MVP 的功能演进。当前 V3 工作分支为 `v3-conversation-collections`。
 
 ## 分支说明
 
 - 当前推荐稳定分支：`v2g-direct-scroll-navigation`
+- 当前 V3 工作分支：`v3-conversation-collections`
 - 历史工作分支：`v2d-fix-timeline-target-mapping`
 
 V2E 到 V2G 曾经连续开发在 `v2d-fix-timeline-target-mapping` 历史分支上，分支名和实际版本内容不完全匹配。当前不需要重写 Git 历史，也不需要强行拆分旧分支；以本文档记录真实功能演进。
@@ -66,3 +67,34 @@ V3 的规划定义为 `V3: Topic-based Conversation Collections`，不是 prompt
 - Make prompt navigation feel more direct.
 - Avoid mixed scroll strategies such as visible `scrollIntoView()` plus manual correction.
 - Preserve V2F long-answer first-click accuracy.
+
+## V3 MVP summary
+
+V3: Topic-based Conversation Collections 已完成 MVP 功能闭环。V3 collections 是 conversation 级别的主题分组，不是 prompt-level favorites，不是收藏单个 prompt，也不是收藏单条 assistant answer。
+
+- V3B: Add collection storage schema
+  - Added local `chrome.storage.local` collections state.
+  - Kept storage key as `aiConversationNavigatorCollections`.
+  - Kept collections `schemaVersion` at `1`.
+- V3C: Add collections UI shell
+  - Added `Collections` tab inside the existing navigator panel.
+  - Added collection list shell and empty state.
+- V3D: Add collection creation and current conversation save
+  - Added create collection flow.
+  - Added `Add current` action for the current ChatGPT conversation.
+  - Avoided duplicate conversation membership.
+- V3E: Add read-only collection detail view
+  - Added collection detail view with saved conversation list.
+  - Added back navigation to the collection list.
+- V3F: Add saved conversation open action
+  - Added explicit `Open conversation` action.
+  - Open action uses the saved ChatGPT conversation URL and validates invalid URLs.
+- V3G: Add collection management actions
+  - Added rename and delete collection.
+  - Added remove saved conversation from a collection.
+  - Confirmations clarify that local records are removed, not original ChatGPT conversations.
+- V3H: Polish collections MVP docs and regression checklist
+  - Polished empty states, status text, confirmation text, and invalid URL wording.
+  - Updated README, roadmap, changelog, manual test checklist, and V3H static regression guard.
+
+V3H does not add tags, nested folders, export/import, search inside collections, AI auto-classification, cloud sync, backend, account system, DeepSeek support, prompt-level favorites, ChatGPT sidebar integration, or a major timeline/navigation redesign.

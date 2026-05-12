@@ -1,6 +1,6 @@
 # Roadmap
 
-本文记录当前 V2G 稳定状态、V2H 稳定化计划，以及 V3 conversation collections 功能规划。当前阶段仍只支持 `https://chatgpt.com/*`；DeepSeek support 暂缓，不进入 V3 MVP 强制范围。
+本文记录当前 V2G 稳定状态、V3 conversation collections MVP，以及 V4 后续方向。当前阶段仍只支持 `https://chatgpt.com/*`；DeepSeek support 暂缓，不进入 V3 MVP 强制范围。
 
 ## 当前稳定状态
 
@@ -20,6 +20,13 @@ V2E 到 V2G 曾经连续开发在历史分支 `v2d-fix-timeline-target-mapping` 
 - V2E: Search panel layering fixes
 - V2F: Long-answer navigation accuracy
 - V2G: Direct scroll without reverse jump
+- V3B: Collection storage schema
+- V3C: Collections UI shell
+- V3D: Create collection and add current conversation
+- V3E: Collection detail read-only view
+- V3F: Open saved conversation URL
+- V3G: Manage collections and saved conversations
+- V3H: Polish, regression checklist, and documentation
 
 完整版本说明见 `docs/change_log.md`。
 
@@ -151,15 +158,29 @@ V3 MVP 不包含：
 - Major compact timeline redesign.
 - DeepSeek full support, unless current architecture already supports it safely.
 
-### V3 version split
+### V3 version split and current status
 
 - V3A: Conversation collections architecture
-- V3B: Collection storage schema
-- V3C: Collections UI shell
-- V3D: Add current conversation to collection
-- V3E: Collection detail and open conversation
-- V3F: Manage collections and saved conversations
-- V3G: Polish and regression tests
+- V3B: Collection storage schema 已完成
+- V3C: Collections UI shell 已完成
+- V3D: Create collection and add current conversation 已完成
+- V3E: Collection detail read-only view 已完成
+- V3F: Open saved conversation URL 已完成
+- V3G: Manage collections and saved conversations 已完成
+- V3H: Polish, regression checklist, and documentation，用于 V3 MVP 收尾，不新增大功能
+
+V3H 的范围只包括 UI 文案 polish、empty state/status text polish、README / roadmap / changelog 更新、manual regression checklist、release notes style summary 和静态测试护栏。
+
+## V4 future direction
+
+V4 可以作为 V3 MVP 之后的单独分析和设计阶段，不属于 V3 MVP。
+
+可能方向：
+
+- ChatGPT sidebar collections integration。
+- Gemini Voyager-like sidebar folder UI。
+
+V4 仍需要先做架构分析和回归风险评估，不能在 V3H 中直接实现。
 
 ### V3 risks
 

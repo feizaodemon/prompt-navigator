@@ -16,7 +16,7 @@ assert(content.includes("function formatCollectionUpdatedAt("), "content.js shou
 assert(content.includes('createViewTab("Prompts", VIEW_PROMPTS)'), "Prompts tab should exist");
 assert(content.includes('createViewTab("Collections", VIEW_COLLECTIONS)'), "Collections tab should exist");
 assert(content.includes('"No collections yet"'), "collections empty state should exist");
-assert(content.includes('"Collections will let you group related conversations by topic."'), "collections shell should explain empty state");
+assert(content.includes('"Create a collection to group related ChatGPT conversations by topic."'), "collections shell should explain empty state");
 assert(content.includes("collectionNameInput"), "collection create input should be wired into the collections shell");
 assert(content.includes("createCollectionFromInput"), "collections shell should expose V3D create flow");
 
