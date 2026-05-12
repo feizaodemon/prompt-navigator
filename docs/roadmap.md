@@ -1,10 +1,13 @@
 # Roadmap
 
-本文记录当前 V2G 稳定状态、V3 conversation collections MVP，以及 V4 后续方向。当前阶段仍只支持 `https://chatgpt.com/*`；DeepSeek support 暂缓，不进入 V3 MVP 强制范围。
+本文记录当前 V2G 稳定导航能力、V3 conversation collections 稳定功能层，以及 V4 sidebar integration 后续方向。当前阶段仍只支持 `https://chatgpt.com/*`；DeepSeek support 暂缓，不进入 V4 初期范围。
 
 ## 当前稳定状态
 
-- 当前推荐稳定分支：`v2g-direct-scroll-navigation`
+- 当前推荐稳定分支：`v3-conversation-collections`
+- V3 Topic-based Conversation Collections 已完成并作为当前稳定功能层保留。
+- V3H Patch 已完成：切换 ChatGPT conversation 后，`Add current` / `Added` 状态会基于当前 conversation 重新计算，不需要刷新页面，不会在 route change 时自动写 storage，也不会自动 add current。
+- V2F long-answer navigation、V2G direct scroll without reverse jump、search panel layering fixes 仍是后续版本不能破坏的回归基线。
 - 历史工作分支：`v2d-fix-timeline-target-mapping`
 
 V2E 到 V2G 曾经连续开发在历史分支 `v2d-fix-timeline-target-mapping` 上，分支名和实际版本内容不完全匹配。当前通过 roadmap / changelog 记录真实演进，不重写 Git 历史。
@@ -27,6 +30,7 @@ V2E 到 V2G 曾经连续开发在历史分支 `v2d-fix-timeline-target-mapping` 
 - V3F: Open saved conversation URL
 - V3G: Manage collections and saved conversations
 - V3H: Polish, regression checklist, and documentation
+- V3H Patch: Refresh collection membership state after conversation switch
 
 完整版本说明见 `docs/change_log.md`。
 
@@ -168,19 +172,106 @@ V3 MVP 不包含：
 - V3F: Open saved conversation URL 已完成
 - V3G: Manage collections and saved conversations 已完成
 - V3H: Polish, regression checklist, and documentation，用于 V3 MVP 收尾，不新增大功能
+- V3H Patch: Fix `Add current` / `Added` state after conversation switch 已完成
 
 V3H 的范围只包括 UI 文案 polish、empty state/status text polish、README / roadmap / changelog 更新、manual regression checklist、release notes style summary 和静态测试护栏。
 
-## V4 future direction
+V3B 到 V3G 的功能闭环已经完成，V3H polish / docs / regression checklist 已完成。V3 当前作为稳定功能层保留，后续 V4 应在 V3 collections 之上增加入口层，而不是重写 V3。
 
-V4 可以作为 V3 MVP 之后的单独分析和设计阶段，不属于 V3 MVP。
+## V4: ChatGPT Sidebar Collections Integration
 
-可能方向：
+V4 方向是 ChatGPT sidebar integration / Voyager-style sidebar collections。V4 不是重写 V3，而是在 V3 collections 功能层之上增加 ChatGPT 左侧 sidebar 入口层。
 
-- ChatGPT sidebar collections integration。
-- Gemini Voyager-like sidebar folder UI。
+兼容旧 roadmap 表述：V4 future direction 包含 ChatGPT sidebar collections integration 和 Gemini Voyager-like sidebar folder UI，但必须分阶段推进。
 
-V4 仍需要先做架构分析和回归风险评估，不能在 V3H 中直接实现。
+V3 右侧 panel 继续保留，作为完整 collection management 界面。V4 左侧 sidebar 初期只做更直观的入口和快速浏览，不应该一开始就在 sidebar 内实现完整 collection management，也不应该一开始就做复杂 folder-style UI。
+
+V4A 开始前只需要完成 roadmap 更新。V4A 本身应该新开 Codex thread，并且只做 feasibility analysis，不做代码修改。
+
+### V4A: Sidebar integration feasibility analysis
+
+Status: planned
+
+性质：只读分析，不改代码。
+
+目标：
+
+- 分析 ChatGPT 左侧 sidebar 是否有稳定挂载点。
+- 判断能否安全插入 collections shortcut / collections list。
+- 分析 ChatGPT sidebar DOM 是否会因 SPA route / resize / collapse / navigation 被重建。
+- 分析如何避免影响 ChatGPT 原生 conversation list。
+- 分析 fallback：如果找不到 sidebar mount point，则继续使用 V3 右侧 panel。
+
+### V4B: Sidebar collections shortcut
+
+Status: planned after V4A
+
+目标：
+
+- 在 ChatGPT 左侧 sidebar 增加一个小的 `Collections` 入口。
+- 点击后打开现有 V3 右侧 Collections panel。
+- 不在左侧直接渲染完整 collections list。
+- 复用 V3G / V3H 已有功能。
+- 低风险验证 sidebar mount point。
+
+### V4C: Sidebar collection list
+
+Status: future
+
+目标：
+
+- 在 ChatGPT 左侧 sidebar 显示 collection list。
+- 点击 collection 后打开现有右侧 detail panel。
+- 左侧只作为快速入口 / 快速浏览。
+- 完整管理仍在右侧 panel。
+
+### V4D: Sidebar folder-style conversation list
+
+Status: future
+
+目标：
+
+- 左侧 sidebar 可以展开 collection。
+- collection 下显示 saved conversations。
+- 点击 saved conversation 打开原始 URL。
+- 仍复用 V3 storage。
+- 不重写 schema。
+
+### V4E: Sidebar polish and fallback behavior
+
+Status: future
+
+目标：
+
+- ChatGPT sidebar collapse / expand 兼容。
+- route change 兼容。
+- fallback behavior。
+- V2 / V3 regression。
+- docs / tests / manual checklist。
+
+### V4 strict constraints
+
+V4 初期不要：
+
+- 不要重写 V3 storage schema。
+- 不要新增 storage key，除非有明确 migration plan。
+- 不要重写 collections state helper。
+- 不要重写 prompt navigation。
+- 不要替换现有右侧 panel。
+- 不要改 compact timeline。
+- 不要改 V2G direct scroll。
+- 不要改 V2F long-answer navigation。
+- 不要改 search panel z-index。
+- 不要做 DeepSeek。
+- 不要做 cloud sync。
+- 不要做 export / import。
+- 不要保存完整 conversation / prompt 内容。
+- 不要依赖过深或脆弱的 ChatGPT class name。
+- 不要影响 ChatGPT 原生 conversation list 点击。
+- 不要注入全局 CSS。
+- 不要新增 document / window / body 级别 click listener，除非明确必要且安全。
+
+V4 fallback principle：如果 ChatGPT sidebar 没有稳定、安全的挂载点，继续使用 V3 右侧 panel，不为了 sidebar integration 牺牲 V2/V3 稳定能力。
 
 ### V3 risks
 
