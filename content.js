@@ -69,6 +69,7 @@
   let navigatorMode = MODE_COMPACT;
   let panelOpen = false;
   let collapsed = false;
+  let currentRouteKey = getCurrentRouteKey();
 
   const platformAdapters = {
     chatgpt: {
@@ -449,6 +450,8 @@
   }
 
   function scheduleUpdate() {
+    handleConversationRouteChange();
+
     if (isProgrammaticScrolling) {
       delayedUpdateAfterProgrammaticScroll = true;
       return;
@@ -456,6 +459,26 @@
 
     window.clearTimeout(updateTimer);
     updateTimer = window.setTimeout(() => renderPromptList(true), UPDATE_DELAY_MS);
+  }
+
+  function getCurrentRouteKey() {
+    return `${getCanonicalConversationUrl()}::${location.pathname}`;
+  }
+
+  function handleConversationRouteChange() {
+    const nextRouteKey = getCurrentRouteKey();
+    if (nextRouteKey === currentRouteKey) {
+      return;
+    }
+
+    currentRouteKey = nextRouteKey;
+    refreshCurrentPanelForRouteChange();
+  }
+
+  function refreshCurrentPanelForRouteChange() {
+    if (activePanelView === VIEW_COLLECTIONS) {
+      renderCollectionsView();
+    }
   }
 
   function refreshPrompts() {
