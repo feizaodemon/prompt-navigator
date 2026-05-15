@@ -76,6 +76,7 @@ V3 的规划定义为 `V3: Topic-based Conversation Collections`，不是 prompt
 - 找不到 sidebar mount point 时静默 fallback，保留 V3 右侧 panel 原功能。
 - 不修改 collections storage schema，`schemaVersion` 仍为 `1`。
 - Diagnostic patch: temporarily set `ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT = false` and added `[ACN boot]` logs around initialization and `createSidebar()` so missing right-panel root can be traced without touching V2/V3 storage or navigation.
+- Prompt detection regression patch: kept the sidebar shortcut disabled, preserved the V3 prompt update timer, and added a scroll-triggered prompt rescan plus low-noise prompt count diagnostics for ChatGPT lazy DOM updates.
 
 ## V3 MVP summary
 

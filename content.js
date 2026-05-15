@@ -75,6 +75,7 @@
   let panelOpen = false;
   let collapsed = false;
   let currentRouteKey = getCurrentRouteKey();
+  let lastPromptDiagnosticCount = null;
 
   const platformAdapters = {
     chatgpt: {
@@ -467,6 +468,7 @@
       return;
     }
 
+    scheduleUpdate();
     scheduleActivePromptUpdate();
   }
 
@@ -681,7 +683,15 @@
   }
 
   function refreshPrompts() {
+    const previousCount = currentPrompts.length;
     currentPrompts = activeAdapter ? activeAdapter.getUserMessages() : [];
+    if (lastPromptDiagnosticCount !== currentPrompts.length) {
+      debugBoot("prompt count changed", {
+        previousCount,
+        nextCount: currentPrompts.length
+      });
+      lastPromptDiagnosticCount = currentPrompts.length;
+    }
     return currentPrompts;
   }
 

@@ -22,6 +22,22 @@
 - [ ] 由于 `ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT = false`，左侧 shortcut 暂时不出现是预期行为。
 - [ ] 如果某个 boot log 没出现，应根据最后一个出现的 log 判断中断点。
 
+### V4B prompt detection regression
+
+- [ ] Reload extension。
+- [ ] Refresh ChatGPT。
+- [ ] 右侧 compact rail 应出现。
+- [ ] 打开右侧 panel。
+- [ ] 在一个包含多个 user prompts 的 conversation 中，timeline 应显示完整 prompt count，而不是只显示 2 个。
+- [ ] compact timeline dot 数量应与 expanded prompt list 数量一致。
+- [ ] 向上 / 向下滚动 conversation 后，prompt count 不应丢失。
+- [ ] prompt hover preview 应正常。
+- [ ] prompt click navigation 应正常。
+- [ ] 切换 conversation 后，prompt list 应刷新为当前 conversation。
+- [ ] Collections tab 应正常。
+- [ ] `Add current` / `Added` 状态应正常。
+- [ ] 左侧 shortcut 暂时不出现是预期，因为 `ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT = false`。
+
 - [ ] 打开 ChatGPT。
 - [ ] 确认左侧 sidebar 存在时，可以看到 `Collections` shortcut。
 - [ ] 如果左侧 sidebar 加载较慢，等待页面稳定后 shortcut 应出现。
