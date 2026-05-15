@@ -1,5 +1,27 @@
 # Manual Test Checklist
 
+## V4B Sidebar Collections Shortcut
+
+- [ ] 打开 ChatGPT。
+- [ ] 确认左侧 sidebar 存在时，可以看到 `Collections` shortcut。
+- [ ] 如果左侧 sidebar 加载较慢，等待页面稳定后 shortcut 应出现。
+- [ ] shortcut 不应重复出现。
+- [ ] 点击 shortcut 后，右侧 Prompt Navigator panel 打开。
+- [ ] 点击 shortcut 后，panel 自动切换到 Collections tab。
+- [ ] V3 collections list 能正常显示。
+- [ ] 找不到 sidebar 或 sidebar collapsed 时，页面不报错，右侧 panel 仍可正常使用。
+- [ ] 在 conversation A / B 之间切换后，shortcut 仍存在或能恢复。
+- [ ] 切换 conversation 后，`Add current` / `Added` 状态仍基于当前 conversation 正确显示。
+- [ ] ChatGPT 原生 sidebar conversation item 仍可正常点击。
+- [ ] ChatGPT 原生 New chat 仍可正常点击。
+- [ ] V2 compact timeline 仍可点击。
+- [ ] V2 hover preview 仍正常。
+- [ ] V2 long-answer navigation 仍准确。
+- [ ] search panel button 仍最高且可点击。
+- [ ] V3 create / rename / delete collection 正常。
+- [ ] V3 add current / remove saved conversation 正常。
+- [ ] V3 open saved conversation URL 正常。
+
 本文用于 V3H 手动回归。当前扩展只支持 `https://chatgpt.com/*`，DeepSeek 仍保持禁用。
 
 ## V2 Regression

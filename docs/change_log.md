@@ -68,6 +68,14 @@ V3 的规划定义为 `V3: Topic-based Conversation Collections`，不是 prompt
 - Avoid mixed scroll strategies such as visible `scrollIntoView()` plus manual correction.
 - Preserve V2F long-answer first-click accuracy.
 
+## V4B: Sidebar Collections Shortcut
+
+- 在 ChatGPT 左侧 sidebar 附近新增轻量 `Collections` shortcut。
+- 点击 shortcut 后打开现有右侧 Prompt Navigator panel，并切换到 V3 `Collections` tab。
+- shortcut 只做入口层，不在左侧 sidebar 渲染完整 collections list，也不做 folder-style conversation list。
+- 找不到 sidebar mount point 时静默 fallback，保留 V3 右侧 panel 原功能。
+- 不修改 collections storage schema，`schemaVersion` 仍为 `1`。
+
 ## V3 MVP summary
 
 V3: Topic-based Conversation Collections 已完成 MVP 功能闭环。V3 collections 是 conversation 级别的主题分组，不是 prompt-level favorites，不是收藏单个 prompt，也不是收藏单条 assistant answer。

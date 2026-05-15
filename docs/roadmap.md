@@ -204,7 +204,9 @@ Status: planned
 
 ### V4B: Sidebar collections shortcut
 
-Status: planned after V4A
+Status: completed on `v4-sidebar-shortcut`
+
+V4B 已完成最小入口层：在能安全识别 ChatGPT 左侧 sidebar 时注入轻量 `Collections` shortcut，点击后复用 V3 右侧 Collections panel，并默认回到 collections list。找不到 sidebar 或 sidebar 被 ChatGPT 重建时，功能会静默 fallback 到原有右侧 panel；本阶段不改 storage schema，也不实现完整 sidebar folder UI。
 
 目标：
 

@@ -58,6 +58,7 @@
   let currentTheme = null;
   let observer = null;
   let updateTimer = null;
+  let sidebarMountFrame = null;
   let lastRenderedPromptCount = null;
   let pinnedStore = {};
   let activePromptKey = null;
@@ -451,6 +452,7 @@
 
   function scheduleUpdate() {
     handleConversationRouteChange();
+    scheduleSidebarMountRefresh();
 
     if (isProgrammaticScrolling) {
       delayedUpdateAfterProgrammaticScroll = true;
@@ -479,6 +481,95 @@
     if (activePanelView === VIEW_COLLECTIONS) {
       renderCollectionsView();
     }
+  }
+
+  function findChatGPTSidebarMount() {
+    try {
+      const sidebarContainers = uniqueElements([
+        ...document.querySelectorAll("aside, nav, [aria-label*='sidebar' i], [data-testid*='sidebar' i]")
+      ]).filter((element) => {
+        if (!(element instanceof HTMLElement) || element.id === NAVIGATOR_ID) {
+          return false;
+        }
+
+        return !root || !element.contains(root);
+      });
+
+      const stableSidebar = sidebarContainers.find((element) => {
+        const hasConversationLink = Boolean(element.querySelector('a[href^="/c/"], a[href*="/c/"]'));
+        const hasNewChatEntry = Boolean(
+          element.querySelector(
+            'a[aria-label*="New chat" i], button[aria-label*="New chat" i], [data-testid*="new-chat" i]'
+          )
+        );
+
+        return hasConversationLink || hasNewChatEntry;
+      });
+
+      if (stableSidebar) {
+        return stableSidebar;
+      }
+
+      const conversationLink = document.querySelector('a[href^="/c/"], a[href*="/c/"]');
+      if (!conversationLink) {
+        return null;
+      }
+
+      return conversationLink.closest("nav, aside");
+    } catch (error) {
+      debugNavigator("[PromptNavigator] sidebar mount lookup failed", error);
+      return null;
+    }
+  }
+
+  function ensureSidebarCollectionsShortcut() {
+    const mount = findChatGPTSidebarMount();
+    if (!mount) {
+      return;
+    }
+
+    if (mount.querySelector(".acn-sidebar-shortcut")) {
+      return;
+    }
+
+    const shortcut = document.createElement("div");
+    shortcut.className = "acn-sidebar-shortcut";
+
+    const button = document.createElement("button");
+    button.className = "acn-sidebar-shortcut-button";
+    button.type = "button";
+    button.textContent = "Collections";
+    button.setAttribute("aria-label", "Open Prompt Navigator Collections");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openCollectionsPanelFromSidebar();
+    });
+
+    shortcut.append(button);
+    mount.insertBefore(shortcut, mount.firstChild);
+  }
+
+  function openCollectionsPanelFromSidebar() {
+    showCollectionList();
+    setPromptPanelOpen(true);
+    setPanelView(VIEW_COLLECTIONS);
+  }
+
+  function scheduleSidebarMountRefresh() {
+    if (sidebarMountFrame !== null) {
+      return;
+    }
+
+    const refresh = () => {
+      sidebarMountFrame = null;
+      ensureSidebarCollectionsShortcut();
+    };
+
+    sidebarMountFrame =
+      typeof window.requestAnimationFrame === "function"
+        ? window.requestAnimationFrame(refresh)
+        : window.setTimeout(refresh, 80);
   }
 
   function refreshPrompts() {
