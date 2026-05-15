@@ -76,6 +76,10 @@
   let collapsed = false;
   let currentRouteKey = getCurrentRouteKey();
   let lastPromptDiagnosticCount = null;
+  let activePromptCacheRouteKey = "";
+  let accumulatedPrompts = [];
+  let accumulatedPromptKeys = new Set();
+  let lastPromptCacheDiagnostic = "";
 
   const platformAdapters = {
     chatgpt: {
@@ -554,6 +558,7 @@
     }
 
     currentRouteKey = nextRouteKey;
+    resetSeenPromptCacheForRoute(nextRouteKey);
     refreshCurrentPanelForRouteChange();
   }
 
@@ -684,7 +689,8 @@
 
   function refreshPrompts() {
     const previousCount = currentPrompts.length;
-    currentPrompts = activeAdapter ? activeAdapter.getUserMessages() : [];
+    const scannedPrompts = activeAdapter ? activeAdapter.getUserMessages() : [];
+    currentPrompts = mergeSeenPromptsForCurrentRoute(scannedPrompts);
     if (lastPromptDiagnosticCount !== currentPrompts.length) {
       debugBoot("prompt count changed", {
         previousCount,
@@ -693,6 +699,94 @@
       lastPromptDiagnosticCount = currentPrompts.length;
     }
     return currentPrompts;
+  }
+
+  function resetSeenPromptCacheForRoute(routeKey) {
+    activePromptCacheRouteKey = routeKey || getCurrentRouteKey();
+    accumulatedPrompts = [];
+    accumulatedPromptKeys = new Set();
+    lastPromptCacheDiagnostic = "";
+    debugBoot("prompt cache reset", {
+      routeKey: activePromptCacheRouteKey
+    });
+  }
+
+  function mergeSeenPromptsForCurrentRoute(scannedPrompts) {
+    const routeKey = getCurrentRouteKey();
+    if (activePromptCacheRouteKey !== routeKey) {
+      resetSeenPromptCacheForRoute(routeKey);
+    }
+
+    const safeScannedPrompts = Array.isArray(scannedPrompts) ? scannedPrompts : [];
+    let addedCount = 0;
+    safeScannedPrompts.forEach((prompt) => {
+      if (!prompt || !prompt.text) {
+        return;
+      }
+
+      const stableKey = getSeenPromptStableKey(prompt);
+      if (!stableKey) {
+        return;
+      }
+
+      if (accumulatedPromptKeys.has(stableKey)) {
+        const existingPrompt = accumulatedPrompts.find((cachedPrompt) => cachedPrompt.stableKey === stableKey);
+        if (existingPrompt) {
+          existingPrompt.element = prompt.element;
+          existingPrompt.text = prompt.text;
+          existingPrompt.preview = prompt.preview;
+        }
+        return;
+      }
+
+      accumulatedPromptKeys.add(stableKey);
+      accumulatedPrompts.push({
+        ...prompt,
+        id: stableKey,
+        stableKey,
+        index: accumulatedPrompts.length + 1,
+        originalIndex: accumulatedPrompts.length
+      });
+      addedCount += 1;
+    });
+
+    accumulatedPrompts = accumulatedPrompts.map((prompt, index) => ({
+      ...prompt,
+      index: index + 1,
+      originalIndex: index
+    }));
+
+    const diagnosticKey = `${safeScannedPrompts.length}:${accumulatedPrompts.length}:${addedCount}`;
+    if (diagnosticKey !== lastPromptCacheDiagnostic) {
+      debugBoot("prompt-cache merged", {
+        scannedCount: safeScannedPrompts.length,
+        accumulatedCount: accumulatedPrompts.length,
+        addedCount
+      });
+      lastPromptCacheDiagnostic = diagnosticKey;
+    }
+
+    return accumulatedPrompts;
+  }
+
+  function getSeenPromptStableKey(prompt) {
+    if (!prompt || !prompt.text) {
+      return "";
+    }
+
+    const element = prompt.element;
+    const messageId =
+      element && element.getAttribute
+        ? element.getAttribute("data-message-id") ||
+          element.closest("[data-message-id]")?.getAttribute("data-message-id") ||
+          element.id ||
+          element.closest("[id]")?.id
+        : "";
+    if (messageId) {
+      return `${getCurrentRouteKey()}::message::${messageId}`;
+    }
+
+    return `${getCurrentRouteKey()}::text::${hashText(prompt.text)}`;
   }
 
   function findPromptById(promptId) {
@@ -1707,7 +1801,7 @@
         targetFound: false,
         targetElement: null
       });
-      debugNavigator("prompt target missing", {
+      debugNavigator("prompt is not currently mounted", {
         clickedPromptId: promptId,
         activePromptId: activePromptKey
       });

@@ -38,6 +38,25 @@
 - [ ] `Add current` / `Added` 状态应正常。
 - [ ] 左侧 shortcut 暂时不出现是预期，因为 `ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT = false`。
 
+### V4B virtualized prompt cache
+
+- [ ] Reload extension。
+- [ ] Refresh ChatGPT。
+- [ ] 打开包含多个 prompts 的长 conversation。
+- [ ] 记录初始 DOM user message count：`document.querySelectorAll('[data-message-author-role="user"]').length`。
+- [ ] 打开 Prompt Navigator。
+- [ ] 确认 timeline 初始可能只显示当前 mounted prompts。
+- [ ] 手动向上 / 向下滚动 conversation。
+- [ ] 当旧 prompts 进入 DOM 后，timeline 应累积增加，而不是只保持当前 DOM 数量。
+- [ ] 新输入一个 prompt 后，timeline 应加入该 prompt。
+- [ ] 已经见过的 prompts 不应因为 DOM 卸载而从 timeline 消失。
+- [ ] compact dots 数量和 expanded prompt list 数量一致。
+- [ ] mounted prompt 的点击跳转仍正常。
+- [ ] unmounted cached prompt 不应错误跳转到其他 prompt。
+- [ ] Collections tab 正常。
+- [ ] `Add current` / `Added` 正常。
+- [ ] 左侧 shortcut 暂时不出现是预期。
+
 - [ ] 打开 ChatGPT。
 - [ ] 确认左侧 sidebar 存在时，可以看到 `Collections` shortcut。
 - [ ] 如果左侧 sidebar 加载较慢，等待页面稳定后 shortcut 应出现。
