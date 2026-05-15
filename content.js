@@ -24,6 +24,7 @@
   const SCROLL_CORRECTION_THRESHOLD_PX = 12;
   const MAX_SCROLL_CORRECTION_PASSES = 2;
   const DEBUG_NAVIGATOR = false;
+  const ACN_DEBUG_PROMPT_CACHE = true;
 
   let activeAdapter = null;
   let root = null;
@@ -70,6 +71,10 @@
   let panelOpen = false;
   let collapsed = false;
   let currentRouteKey = getCurrentRouteKey();
+  let activePromptCacheRouteKey = currentRouteKey;
+  let accumulatedPrompts = [];
+  let accumulatedPromptKeys = new Set();
+  let lastPromptCacheDebugState = "";
 
   const platformAdapters = {
     chatgpt: {
@@ -472,6 +477,7 @@
     }
 
     currentRouteKey = nextRouteKey;
+    resetPromptCacheForRoute(nextRouteKey);
     refreshCurrentPanelForRouteChange();
   }
 
@@ -482,7 +488,8 @@
   }
 
   function refreshPrompts() {
-    currentPrompts = activeAdapter ? activeAdapter.getUserMessages() : [];
+    const scannedPrompts = activeAdapter ? activeAdapter.getUserMessages() : [];
+    currentPrompts = mergeSeenPromptsForCurrentRoute(scannedPrompts);
     return currentPrompts;
   }
 
@@ -1468,7 +1475,11 @@
 
   function handlePromptClick(promptId, source, displayedIndex) {
     let prompt = findPromptById(promptId);
-    const originalIndex = prompt ? prompt.originalIndex : null;
+    const originalIndex = prompt
+      ? prompt.originalIndex
+      : Number.isFinite(displayedIndex)
+        ? displayedIndex - 1
+        : null;
 
     refreshPrompts();
     prompt =
@@ -1491,16 +1502,17 @@
       textPreview: prompt && prompt.text ? prompt.text.slice(0, 80) : ""
     });
 
-    if (!prompt || !prompt.element || !prompt.element.isConnected) {
+    if (!prompt || !prompt.isMounted || !prompt.element || !prompt.element.isConnected) {
       debugNavigator("jump requested", {
         index: null,
         promptId,
         targetFound: false,
         targetElement: null
       });
-      debugNavigator("prompt target missing", {
+      debugNavigator("prompt target unavailable", {
         clickedPromptId: promptId,
-        activePromptId: activePromptKey
+        activePromptId: activePromptKey,
+        mounted: !!(prompt && prompt.isMounted)
       });
       return;
     }
@@ -1699,6 +1711,25 @@
     }
 
     console.debug("[PromptNavigator]", message, details);
+  }
+
+  function debugPromptCache(message, details) {
+    if (!ACN_DEBUG_PROMPT_CACHE) {
+      return;
+    }
+
+    const nextState = JSON.stringify({
+      accumulatedCount: details && details.accumulatedCount,
+      addedCount: details && details.addedCount,
+      mountedCount: details && details.mountedCount,
+      routeChanged: details && details.routeChanged
+    });
+    if (nextState === lastPromptCacheDebugState && !(details && details.routeChanged)) {
+      return;
+    }
+
+    lastPromptCacheDebugState = nextState;
+    console.debug("[Prompt Navigator][Prompt Cache] " + message, details || {});
   }
 
   function setActivePrompt(promptKey, promptIndex) {
@@ -2406,6 +2437,114 @@
 
   function getConversationKey() {
     return `${location.origin}${location.pathname}`;
+  }
+
+  function resetPromptCacheForRoute(routeKey) {
+    activePromptCacheRouteKey = routeKey;
+    accumulatedPrompts = [];
+    accumulatedPromptKeys = new Set();
+    lastPromptCacheDebugState = "";
+    debugPromptCache("route reset", {
+      accumulatedCount: 0,
+      mountedCount: 0,
+      routeChanged: true
+    });
+  }
+
+  function mergeSeenPromptsForCurrentRoute(scannedPrompts) {
+    const routeKey = getCurrentRouteKey();
+    if (routeKey !== activePromptCacheRouteKey) {
+      resetPromptCacheForRoute(routeKey);
+    }
+
+    let addedCount = 0;
+    accumulatedPrompts.forEach((cachedPrompt) => {
+      cachedPrompt.isMounted = false;
+      cachedPrompt.element = null;
+    });
+
+    scannedPrompts.forEach((prompt) => {
+      const cacheKey = getPromptCacheKey(prompt, routeKey);
+      if (!cacheKey) {
+        return;
+      }
+
+      prompt.id = cacheKey;
+      prompt.cacheKey = cacheKey;
+      prompt.isMounted = true;
+
+      if (accumulatedPromptKeys.has(cacheKey)) {
+        const cachedPrompt = accumulatedPrompts.find((entry) => entry.cacheKey === cacheKey);
+        if (!cachedPrompt) {
+          return;
+        }
+        cachedPrompt.text = prompt.text;
+        cachedPrompt.preview = prompt.preview;
+        cachedPrompt.element = prompt.element;
+        cachedPrompt.isMounted = true;
+        if (prompt.element) {
+          prompt.element.dataset.acnPromptKey = cachedPrompt.id;
+        }
+        return;
+      }
+
+      accumulatedPromptKeys.add(cacheKey);
+      accumulatedPrompts.push(prompt);
+      addedCount += 1;
+    });
+
+    refreshAccumulatedPromptIndexes();
+    debugPromptCache("merged", {
+      scannedCount: scannedPrompts.length,
+      accumulatedCount: accumulatedPrompts.length,
+      addedCount,
+      mountedCount: accumulatedPrompts.filter((prompt) => prompt.isMounted).length,
+      routeChanged: false
+    });
+
+    return accumulatedPrompts;
+  }
+
+  function refreshAccumulatedPromptIndexes() {
+    accumulatedPrompts.forEach((prompt, index) => {
+      prompt.index = index + 1;
+      prompt.originalIndex = index;
+      if (prompt.element) {
+        prompt.element.dataset.acnPromptKey = prompt.id;
+      }
+    });
+  }
+
+  function getPromptCacheKey(prompt, routeKey) {
+    if (!prompt || !prompt.text) {
+      return "";
+    }
+
+    const element = prompt.element;
+    const preferredMessageIdAttribute = "data-message-id";
+    const messageId = getPromptMessageId(element);
+    if (messageId) {
+      return `${routeKey}::${preferredMessageIdAttribute}:${messageId}`;
+    }
+
+    return `${routeKey}::text:${hashText(prompt.text)}`;
+  }
+
+  function getPromptMessageId(element) {
+    if (!element) {
+      return "";
+    }
+
+    const messageElement = element.closest("[data-message-id]") || element;
+    const parentElement = element.parentElement;
+    return (
+      element.getAttribute("data-message-id") ||
+      messageElement.getAttribute("data-message-id") ||
+      element.id ||
+      (parentElement ? parentElement.getAttribute("data-message-id") : "") ||
+      (parentElement ? parentElement.id : "") ||
+      ""
+    );
   }
 
   function normalizeMessages(elements, platformKey) {

@@ -97,4 +97,14 @@ V3: Topic-based Conversation Collections 已完成 MVP 功能闭环。V3 collect
   - Polished empty states, status text, confirmation text, and invalid URL wording.
   - Updated README, roadmap, changelog, manual test checklist, and V3H static regression guard.
 
+## V3 compatibility patch: virtualized prompt extraction
+
+- 已适配 ChatGPT virtualized / lazy-mounted DOM 下的 prompt extraction。
+- 新增仅存在于 content script 内存中的 seen prompt cache，作用域为当前 tab 和当前 conversation route。
+- ChatGPT 卸载已经见过的 prompt DOM 后，timeline 中的已见 prompt 不会消失。
+- 用户手动滚动时，重新进入 DOM 的 prompt 会被合并进 timeline；新输入的 prompt 也会加入 timeline。
+- 不把完整 prompt 内容持久化到 `chrome.storage.local`。
+- 不改变 V3 collections storage schema，`schemaVersion` 仍为 `1`。
+- 限制：prompt 必须至少在当前页面 DOM 中出现过一次，Prompt Navigator 才能缓存它。
+
 V3H does not add tags, nested folders, export/import, search inside collections, AI auto-classification, cloud sync, backend, account system, DeepSeek support, prompt-level favorites, ChatGPT sidebar integration, or a major timeline/navigation redesign.

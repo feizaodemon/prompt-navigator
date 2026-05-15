@@ -31,8 +31,19 @@ V2E 到 V2G 曾经连续开发在历史分支 `v2d-fix-timeline-target-mapping` 
 - V3G: Manage collections and saved conversations
 - V3H: Polish, regression checklist, and documentation
 - V3H Patch: Refresh collection membership state after conversation switch
+- V3 compatibility patch: 适配 ChatGPT virtualized / lazy-mounted DOM 下的 prompt extraction
 
 完整版本说明见 `docs/change_log.md`。
+
+## V3 compatibility patch: ChatGPT virtualized DOM
+
+这是 V3 conversation collections 线上的兼容性补丁，不是 V4 sidebar shortcut 方向的延续。
+
+- 保持 Prompt Navigator 现有右侧 V3 timeline 和 collections UI。
+- 只缓存当前 tab 会话中已经出现在页面 DOM 里的 prompts。
+- 不读取 ChatGPT 私有内部 data store。
+- 不持久化完整 prompt 内容，也不改变 V3 collections storage schema。
+- 接受当前限制：从未挂载到 DOM 的历史 prompts 不能自动恢复。
 
 ## V2H: Stabilization, documentation, and regression safety
 

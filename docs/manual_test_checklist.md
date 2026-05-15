@@ -73,3 +73,26 @@
 - [ ] Confirm no full prompt content stored。
 - [ ] Confirm storage key remains `aiConversationNavigatorCollections`。
 - [ ] Confirm DeepSeek remains disabled unless future work。
+
+## V3 virtualized prompt extraction
+
+- [ ] Reload extension。
+- [ ] Refresh ChatGPT。
+- [ ] 打开包含多个 prompts 的长 conversation。
+- [ ] 在 DevTools Console 执行：`document.querySelectorAll('[data-message-author-role="user"]').length`。
+- [ ] 记录当前 DOM 中 user message 数量。
+- [ ] 打开 Prompt Navigator。
+- [ ] 初始 timeline 可能只显示当前 mounted prompts，这是当前 ChatGPT virtualized DOM 的限制。
+- [ ] 手动向上 / 向下滚动 conversation。
+- [ ] 当更多 prompts 进入 DOM 后，timeline 应累积增加。
+- [ ] 已经见过的 prompts 不应因为 DOM 卸载而从 timeline 消失。
+- [ ] 新输入 prompt 后，timeline 应加入新 prompt。
+- [ ] compact dots 数量应与 expanded prompt list 数量一致。
+- [ ] mounted prompt 点击跳转应正常。
+- [ ] unmounted cached prompt 不应错误跳到其他 prompt。
+- [ ] hover preview 应正常。
+- [ ] search panel button 应仍可点击。
+- [ ] Collections tab 应正常。
+- [ ] `Add current` / `Added` 状态应正常。
+- [ ] V3 create / rename / delete collection 应正常。
+- [ ] V3 open saved conversation URL 应正常。
