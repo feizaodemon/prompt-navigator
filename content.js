@@ -452,7 +452,6 @@
 
   function scheduleUpdate() {
     handleConversationRouteChange();
-    scheduleSidebarMountRefresh();
 
     if (isProgrammaticScrolling) {
       delayedUpdateAfterProgrammaticScroll = true;
@@ -461,6 +460,11 @@
 
     window.clearTimeout(updateTimer);
     updateTimer = window.setTimeout(() => renderPromptList(true), UPDATE_DELAY_MS);
+    try {
+      scheduleSidebarMountRefresh();
+    } catch (error) {
+      debugNavigator("[PromptNavigator] sidebar refresh schedule failed", error);
+    }
   }
 
   function getCurrentRouteKey() {
@@ -486,7 +490,7 @@
   function findChatGPTSidebarMount() {
     try {
       const sidebarContainers = uniqueElements([
-        ...document.querySelectorAll("aside, nav, [aria-label*='sidebar' i], [data-testid*='sidebar' i]")
+        ...document.querySelectorAll("aside, nav, [aria-label*='sidebar'], [data-testid*='sidebar']")
       ]).filter((element) => {
         if (!(element instanceof HTMLElement) || element.id === NAVIGATOR_ID) {
           return false;
@@ -499,7 +503,7 @@
         const hasConversationLink = Boolean(element.querySelector('a[href^="/c/"], a[href*="/c/"]'));
         const hasNewChatEntry = Boolean(
           element.querySelector(
-            'a[aria-label*="New chat" i], button[aria-label*="New chat" i], [data-testid*="new-chat" i]'
+            'a[aria-label*="New chat"], button[aria-label*="New chat"], [data-testid*="new-chat"]'
           )
         );
 
@@ -523,53 +527,79 @@
   }
 
   function ensureSidebarCollectionsShortcut() {
-    const mount = findChatGPTSidebarMount();
-    if (!mount) {
-      return;
+    try {
+      const mount = findChatGPTSidebarMount();
+      if (!mount) {
+        return;
+      }
+
+      if (!mount.isConnected) {
+        return;
+      }
+
+      if (mount.querySelector(".acn-sidebar-shortcut")) {
+        return;
+      }
+
+      const shortcut = document.createElement("div");
+      shortcut.className = "acn-sidebar-shortcut";
+
+      const button = document.createElement("button");
+      button.className = "acn-sidebar-shortcut-button";
+      button.type = "button";
+      button.textContent = "Collections";
+      button.setAttribute("aria-label", "Open Prompt Navigator Collections");
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openCollectionsPanelFromSidebar();
+      });
+
+      shortcut.append(button);
+      mount.insertBefore(shortcut, mount.firstChild);
+    } catch (error) {
+      debugNavigator("[PromptNavigator] sidebar shortcut mount failed", error);
     }
-
-    if (mount.querySelector(".acn-sidebar-shortcut")) {
-      return;
-    }
-
-    const shortcut = document.createElement("div");
-    shortcut.className = "acn-sidebar-shortcut";
-
-    const button = document.createElement("button");
-    button.className = "acn-sidebar-shortcut-button";
-    button.type = "button";
-    button.textContent = "Collections";
-    button.setAttribute("aria-label", "Open Prompt Navigator Collections");
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      openCollectionsPanelFromSidebar();
-    });
-
-    shortcut.append(button);
-    mount.insertBefore(shortcut, mount.firstChild);
   }
 
   function openCollectionsPanelFromSidebar() {
-    showCollectionList();
-    setPromptPanelOpen(true);
-    setPanelView(VIEW_COLLECTIONS);
+    try {
+      selectedCollectionId = "";
+      setPromptPanelOpen(true);
+      setPanelView(VIEW_COLLECTIONS);
+    } catch (error) {
+      debugNavigator("[PromptNavigator] sidebar shortcut open failed", error);
+      try {
+        setPromptPanelOpen(true);
+      } catch (fallbackError) {
+        debugNavigator("[PromptNavigator] sidebar shortcut fallback open failed", fallbackError);
+      }
+    }
   }
 
   function scheduleSidebarMountRefresh() {
-    if (sidebarMountFrame !== null) {
-      return;
-    }
+    try {
+      if (sidebarMountFrame !== null) {
+        return;
+      }
 
-    const refresh = () => {
+      const refresh = () => {
+        sidebarMountFrame = null;
+        try {
+          ensureSidebarCollectionsShortcut();
+        } catch (error) {
+          debugNavigator("[PromptNavigator] sidebar shortcut refresh failed", error);
+        }
+      };
+
+      sidebarMountFrame =
+        typeof window.requestAnimationFrame === "function"
+          ? window.requestAnimationFrame(refresh)
+          : window.setTimeout(refresh, 80);
+    } catch (error) {
       sidebarMountFrame = null;
-      ensureSidebarCollectionsShortcut();
-    };
-
-    sidebarMountFrame =
-      typeof window.requestAnimationFrame === "function"
-        ? window.requestAnimationFrame(refresh)
-        : window.setTimeout(refresh, 80);
+      debugNavigator("[PromptNavigator] sidebar refresh setup failed", error);
+    }
   }
 
   function refreshPrompts() {

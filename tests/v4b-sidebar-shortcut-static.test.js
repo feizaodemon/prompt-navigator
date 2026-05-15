@@ -30,6 +30,9 @@ const ensureSidebarCollectionsShortcut = getFunctionBlock("ensureSidebarCollecti
 const openCollectionsPanelFromSidebar = getFunctionBlock("openCollectionsPanelFromSidebar");
 const scheduleSidebarMountRefresh = getFunctionBlock("scheduleSidebarMountRefresh");
 const scheduleUpdate = getFunctionBlock("scheduleUpdate");
+const createSidebar = getFunctionBlock("createSidebar");
+const setPromptPanelOpen = getFunctionBlock("setPromptPanelOpen");
+const setPanelView = getFunctionBlock("setPanelView");
 
 assert(findChatGPTSidebarMount.includes("querySelectorAll(\"aside, nav"), "mount lookup should prefer stable sidebar containers");
 assert(findChatGPTSidebarMount.includes('a[href^="/c/"], a[href*="/c/"]'), "mount lookup should use conversation links as a fallback signal");
@@ -47,15 +50,26 @@ assert(ensureSidebarCollectionsShortcut.includes("event.preventDefault()"), "sho
 assert(ensureSidebarCollectionsShortcut.includes("event.stopPropagation()"), "shortcut click should not bubble into ChatGPT sidebar handlers");
 assert(ensureSidebarCollectionsShortcut.includes("openCollectionsPanelFromSidebar()"), "shortcut click should open the existing Collections panel");
 
-assert(openCollectionsPanelFromSidebar.includes("showCollectionList()"), "sidebar open should default to the collection list");
+assert(openCollectionsPanelFromSidebar.includes('selectedCollectionId = ""'), "sidebar open should default to the collection list");
 assert(openCollectionsPanelFromSidebar.includes("setPromptPanelOpen(true)"), "sidebar open should open the right panel");
 assert(openCollectionsPanelFromSidebar.includes("setPanelView(VIEW_COLLECTIONS)"), "sidebar open should switch to Collections tab");
+assert(openCollectionsPanelFromSidebar.includes("try"), "sidebar open should fail closed if Collections switching throws");
 assert(!openCollectionsPanelFromSidebar.includes("saveCollectionsState"), "sidebar open must not write storage");
 assert(!openCollectionsPanelFromSidebar.includes("addCurrentConversationToCollection"), "sidebar open must not auto-add current conversation");
 
 assert(scheduleSidebarMountRefresh.includes("requestAnimationFrame"), "sidebar refresh should be lightweight and deferred");
 assert(scheduleSidebarMountRefresh.includes("ensureSidebarCollectionsShortcut()"), "sidebar refresh should ensure shortcut mount");
+assert(scheduleSidebarMountRefresh.includes("try"), "sidebar refresh should fail closed around shortcut DOM work");
+assert(!scheduleSidebarMountRefresh.includes("saveCollectionsState"), "sidebar refresh must not write storage");
+assert(!scheduleSidebarMountRefresh.includes("addCurrentConversationToCollection"), "sidebar refresh must not auto-add current conversation");
 assert(scheduleUpdate.includes("scheduleSidebarMountRefresh()"), "existing mutation refresh cycle should schedule sidebar refresh");
+assert(scheduleUpdate.includes("try"), "scheduleUpdate should protect core prompt refresh from sidebar errors");
+
+assert(createSidebar.includes("root = document.createElement(\"aside\")"), "right rail root creation should remain");
+assert(createSidebar.includes("document.documentElement.appendChild(root)"), "right rail should still append to documentElement");
+assert(content.includes("function setPromptPanelOpen(open)"), "setPromptPanelOpen should remain");
+assert(content.includes("function setPanelView(view)"), "setPanelView should remain");
+assert(content.includes('const VIEW_COLLECTIONS = "collections"'), "VIEW_COLLECTIONS should remain");
 
 assert(styles.includes(".acn-sidebar-shortcut"), "shortcut wrapper should have minimal scoped styles");
 assert(styles.includes(".acn-sidebar-shortcut-button"), "shortcut button should have minimal scoped styles");

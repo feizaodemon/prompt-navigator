@@ -10,6 +10,11 @@
 - [ ] 点击 shortcut 后，panel 自动切换到 Collections tab。
 - [ ] V3 collections list 能正常显示。
 - [ ] 找不到 sidebar 或 sidebar collapsed 时，页面不报错，右侧 panel 仍可正常使用。
+- [ ] 即使左侧 sidebar shortcut 没出现，右侧 Prompt Navigator compact rail 也必须出现。
+- [ ] 即使 ChatGPT sidebar DOM 变化，扩展不能整体消失。
+- [ ] 刷新 ChatGPT 后右侧 panel 必须可打开。
+- [ ] Console 不应出现来自 `content.js` 的 uncaught error。
+- [ ] sidebar shortcut 失败时，V2 prompt timeline / V3 collections 仍正常。
 - [ ] 在 conversation A / B 之间切换后，shortcut 仍存在或能恢复。
 - [ ] 切换 conversation 后，`Add current` / `Added` 状态仍基于当前 conversation 正确显示。
 - [ ] ChatGPT 原生 sidebar conversation item 仍可正常点击。
