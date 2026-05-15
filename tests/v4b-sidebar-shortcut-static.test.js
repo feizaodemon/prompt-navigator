@@ -34,6 +34,24 @@ const createSidebar = getFunctionBlock("createSidebar");
 const setPromptPanelOpen = getFunctionBlock("setPromptPanelOpen");
 const setPanelView = getFunctionBlock("setPanelView");
 
+assert(content.includes("const ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT = false"), "sidebar shortcut should be disabled in diagnostic mode");
+assert(content.includes("const ACN_DEBUG_BOOT = true"), "boot diagnostics should be enabled for this diagnostic patch");
+assert(content.includes("function debugBoot(message, details)"), "boot diagnostic helper should exist");
+[
+  "content script loaded",
+  "initialization start",
+  "before createSidebar",
+  "createSidebar start",
+  "createSidebar root created",
+  "createSidebar before append",
+  "createSidebar appended root",
+  "root query after append",
+  "initialization completed"
+].forEach((message) => {
+  assert(content.includes(message), `[ACN boot] ${message} should be logged`);
+});
+assert(content.includes('console.debug("[ACN boot]", message'), "boot logs should use the [ACN boot] prefix");
+
 assert(findChatGPTSidebarMount.includes("querySelectorAll(\"aside, nav"), "mount lookup should prefer stable sidebar containers");
 assert(findChatGPTSidebarMount.includes('a[href^="/c/"], a[href*="/c/"]'), "mount lookup should use conversation links as a fallback signal");
 assert(findChatGPTSidebarMount.includes("return null"), "mount lookup should safely return null");
@@ -63,10 +81,13 @@ assert(scheduleSidebarMountRefresh.includes("try"), "sidebar refresh should fail
 assert(!scheduleSidebarMountRefresh.includes("saveCollectionsState"), "sidebar refresh must not write storage");
 assert(!scheduleSidebarMountRefresh.includes("addCurrentConversationToCollection"), "sidebar refresh must not auto-add current conversation");
 assert(scheduleUpdate.includes("scheduleSidebarMountRefresh()"), "existing mutation refresh cycle should schedule sidebar refresh");
+assert(scheduleUpdate.includes("ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT"), "sidebar refresh scheduling should be guarded by the feature flag");
 assert(scheduleUpdate.includes("try"), "scheduleUpdate should protect core prompt refresh from sidebar errors");
 
 assert(createSidebar.includes("root = document.createElement(\"aside\")"), "right rail root creation should remain");
 assert(createSidebar.includes("document.documentElement.appendChild(root)"), "right rail should still append to documentElement");
+assert(createSidebar.includes('root.id = NAVIGATOR_ID'), "right rail should still use ai-conversation-navigator id");
+assert(createSidebar.includes("debugBoot"), "createSidebar should include diagnostic boot logs");
 assert(content.includes("function setPromptPanelOpen(open)"), "setPromptPanelOpen should remain");
 assert(content.includes("function setPanelView(view)"), "setPanelView should remain");
 assert(content.includes('const VIEW_COLLECTIONS = "collections"'), "VIEW_COLLECTIONS should remain");
@@ -84,6 +105,8 @@ assert(content.includes('document.addEventListener("click", handleOutsidePanelCl
 assert(!content.includes('window.addEventListener("click"'), "V4B should not add a window-level click listener");
 assert(!content.includes('document.body.addEventListener("click"'), "V4B should not add a body-level click listener");
 assert(!content.includes("setInterval("), "V4B should not poll for sidebar state");
+assert(!/document\.querySelectorAll\(["']\.\*?acn-|document\.querySelectorAll\(["']\[class\*=['"]acn-/i.test(content), "V4B must not add broad cleanup over acn classes");
+assert(!/removeChild\([^)]*NAVIGATOR_ID|remove\(\)/.test(content), "V4B must not remove the right navigator root");
 
 assert(content.includes('const COLLECTIONS_STORAGE_KEY = "aiConversationNavigatorCollections"'), "collections storage key should remain unchanged");
 assert(content.includes('const PINNED_STORAGE_KEY = "aiConversationNavigatorPinnedPrompts"'), "pinned prompt storage key should remain unchanged");

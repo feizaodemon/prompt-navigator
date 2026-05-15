@@ -2,6 +2,26 @@
 
 ## V4B Sidebar Collections Shortcut
 
+### V4B diagnostic mode
+
+- [ ] Reload extension。
+- [ ] Refresh ChatGPT。
+- [ ] Console 应看到 `[ACN boot] content script loaded`。
+- [ ] Console 应看到 `[ACN boot] initialization start`。
+- [ ] Console 应看到 `[ACN boot] before createSidebar`。
+- [ ] Console 应看到 `[ACN boot] createSidebar start`。
+- [ ] Console 应看到 `[ACN boot] createSidebar appended root`。
+- [ ] Console 应看到 `[ACN boot] initialization completed`。
+- [ ] Console 不应有来自 `content.js` 的 uncaught error。
+- [ ] 执行 `document.querySelector("#ai-conversation-navigator")` 应返回 root element。
+- [ ] 右侧 compact rail 应恢复显示。
+- [ ] 右侧 panel 应能打开。
+- [ ] Collections tab 应能打开。
+- [ ] V2 timeline / hover / navigation 应正常。
+- [ ] V3 collection CRUD 应正常。
+- [ ] 由于 `ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT = false`，左侧 shortcut 暂时不出现是预期行为。
+- [ ] 如果某个 boot log 没出现，应根据最后一个出现的 log 判断中断点。
+
 - [ ] 打开 ChatGPT。
 - [ ] 确认左侧 sidebar 存在时，可以看到 `Collections` shortcut。
 - [ ] 如果左侧 sidebar 加载较慢，等待页面稳定后 shortcut 应出现。

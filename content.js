@@ -24,6 +24,10 @@
   const SCROLL_CORRECTION_THRESHOLD_PX = 12;
   const MAX_SCROLL_CORRECTION_PASSES = 2;
   const DEBUG_NAVIGATOR = false;
+  const ACN_DEBUG_BOOT = true;
+  const ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT = false;
+
+  debugBoot("content script loaded");
 
   let activeAdapter = null;
   let root = null;
@@ -80,6 +84,23 @@
     }
   };
 
+  function debugBoot(message, details) {
+    if (!ACN_DEBUG_BOOT) {
+      return;
+    }
+
+    if (typeof console === "undefined" || typeof console.debug !== "function") {
+      return;
+    }
+
+    if (typeof details === "undefined") {
+      console.debug("[ACN boot]", message);
+      return;
+    }
+
+    console.debug("[ACN boot]", message, details);
+  }
+
   function extractChatGPTPrompts() {
     const elements = uniqueElements([
       ...document.querySelectorAll('[data-message-author-role="user"]'),
@@ -90,12 +111,28 @@
   }
 
   function init() {
+    debugBoot("initialization start", {
+      hostname: location.hostname,
+      existingRoot: Boolean(document.getElementById(NAVIGATOR_ID)),
+      documentElement: Boolean(document.documentElement),
+      body: Boolean(document.body)
+    });
+
     activeAdapter = Object.values(platformAdapters).find((adapter) => adapter.match());
     if (!activeAdapter || document.getElementById(NAVIGATOR_ID)) {
+      debugBoot("initialization skipped", {
+        hasActiveAdapter: Boolean(activeAdapter),
+        existingRoot: Boolean(document.getElementById(NAVIGATOR_ID))
+      });
       return;
     }
 
+    debugBoot("before createSidebar");
     createSidebar();
+    debugBoot("after createSidebar", {
+      rootExists: Boolean(document.getElementById(NAVIGATOR_ID)),
+      rootConnected: Boolean(root && root.isConnected)
+    });
     applyPromptNavigatorTheme(detectChatGPTTheme());
     observeChatGPTThemeChanges();
     Promise.all([loadPinnedPrompts(), loadNavigatorMode()]).then(() => {
@@ -103,13 +140,35 @@
       scheduleUpdate();
       startObserver();
       startActivePromptTracking();
+      debugBoot("initialization completed", {
+        rootExists: Boolean(document.getElementById(NAVIGATOR_ID)),
+        rootConnected: Boolean(root && root.isConnected)
+      });
     });
   }
 
   function createSidebar() {
+    debugBoot("createSidebar start");
+    const existingRoot = document.getElementById(NAVIGATOR_ID);
+    if (existingRoot) {
+      debugBoot("createSidebar existing root", {
+        isConnected: existingRoot.isConnected
+      });
+      root = existingRoot;
+      return;
+    }
+
+    if (!document.documentElement) {
+      debugBoot("createSidebar missing documentElement");
+      return;
+    }
+
     root = document.createElement("aside");
     root.id = NAVIGATOR_ID;
     root.setAttribute("aria-label", "Prompt Navigator");
+    debugBoot("createSidebar root created", {
+      id: root.id
+    });
 
     const compactHeader = document.createElement("div");
     compactHeader.className = "acn-compact-header";
@@ -272,7 +331,20 @@
     compactHeader.append(modeToggleButton);
     panel.append(panelHeader, meta, viewTabs, searchWrap, pinnedSection, list, emptyState, collectionsView);
     root.append(compactHeader, compactTimeline, panel);
+    debugBoot("createSidebar before append", {
+      parentTag: document.documentElement.tagName
+    });
     document.documentElement.appendChild(root);
+    debugBoot("createSidebar appended root", {
+      isConnected: root.isConnected,
+      parentTag: root.parentElement ? root.parentElement.tagName : ""
+    });
+    const rootAfterAppend = document.querySelector(`#${NAVIGATOR_ID}`);
+    debugBoot("root query after append", {
+      found: Boolean(rootAfterAppend),
+      isConnected: Boolean(rootAfterAppend && rootAfterAppend.isConnected),
+      parentTag: rootAfterAppend && rootAfterAppend.parentElement ? rootAfterAppend.parentElement.tagName : ""
+    });
     document.addEventListener("click", handleOutsidePanelClick);
     setPanelView(VIEW_PROMPTS);
   }
@@ -460,10 +532,12 @@
 
     window.clearTimeout(updateTimer);
     updateTimer = window.setTimeout(() => renderPromptList(true), UPDATE_DELAY_MS);
-    try {
-      scheduleSidebarMountRefresh();
-    } catch (error) {
-      debugNavigator("[PromptNavigator] sidebar refresh schedule failed", error);
+    if (ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT) {
+      try {
+        scheduleSidebarMountRefresh();
+      } catch (error) {
+        debugNavigator("[PromptNavigator] sidebar refresh schedule failed", error);
+      }
     }
   }
 
@@ -578,6 +652,10 @@
   }
 
   function scheduleSidebarMountRefresh() {
+    if (!ENABLE_SIDEBAR_COLLECTIONS_SHORTCUT) {
+      return;
+    }
+
     try {
       if (sidebarMountFrame !== null) {
         return;
